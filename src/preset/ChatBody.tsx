@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useConversation } from '../hooks/useConversation';
 import { labelForError, type Labels } from './labels';
 import { Markdown } from './Markdown';
+import { Card } from './Card';
 import type { Branding } from './branding';
 
 function SendIcon() {
@@ -78,9 +79,14 @@ export function ChatBody({ branding, labels, showActivity }: { branding?: Brandi
         {messages.length === 0 && !streaming && <div className="aichat-empty">{labels.emptyState}</div>}
 
         {messages.map((m) => (
-          <div key={m.id} className={`aichat-msg aichat-msg-${m.role}`}>
-            {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
-          </div>
+          <Fragment key={m.id}>
+            {(m.role === 'user' || m.text.trim() !== '') && (
+              <div className={`aichat-msg aichat-msg-${m.role}`}>
+                {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
+              </div>
+            )}
+            {m.card && <Card card={m.card} />}
+          </Fragment>
         ))}
 
         {showActivityChip && (
