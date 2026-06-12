@@ -15,6 +15,7 @@ export const MOCK_PROFILES = [
 interface Canned {
   tools?: string[];
   text: string;
+  card?: unknown;
 }
 
 // 4 mensajes que ejercitan el renderer: listas+negritas, tabla, encabezados+hr, texto+código+link.
@@ -55,6 +56,41 @@ Para un salón de uso intensivo te conviene el **Philips 48W Pro**:
   {
     text: `Listo, te dejé el seguimiento en \`pedido #4821\`. Podés ver el estado en [tu panel](https://centralled.example/pedidos) cuando quieras. Cualquier cosa, escribime. 🙌`,
   },
+  {
+    tools: ['create_budget'],
+    text: 'Te armé el presupuesto 👇',
+    card: {
+      type: 'budget',
+      title: 'Presupuesto #1042',
+      subtitle: 'Central Led · vence 15/07',
+      lines: [
+        { label: 'Panel LED 60x60 40W', qty: 50, amount: '$878.750' },
+        { label: 'Instalación', qty: 1, amount: '$120.000' },
+      ],
+      total: { label: 'Total', amount: '$998.750' },
+      actions: [
+        {
+          label: 'Descargar PDF',
+          url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          icon: 'download',
+          download: true,
+          style: 'primary',
+        },
+        {
+          label: 'Pedir por WhatsApp',
+          url: 'https://wa.me/5491100000000?text=' + encodeURIComponent('Hola! Quiero avanzar con el presupuesto #1042 (Central Led).'),
+          icon: 'whatsapp',
+          style: 'whatsapp',
+        },
+        {
+          label: 'Tengo una consulta',
+          url: 'https://wa.me/5491100000000?text=' + encodeURIComponent('Hola! Tengo una consulta sobre el presupuesto #1042.'),
+          icon: 'chat',
+          style: 'default',
+        },
+      ],
+    },
+  },
 ];
 
 let turn = 0;
@@ -84,6 +120,10 @@ function sseResponse(canned: Canned): Response {
       for (const chunk of chunks) {
         controller.enqueue(enc.encode(sseBlock('text', { delta: chunk })));
         await sleep(18);
+      }
+      if (canned.card) {
+        await sleep(120);
+        controller.enqueue(enc.encode(sseBlock('card', canned.card)));
       }
       controller.enqueue(enc.encode(sseBlock('done', { rounds: (canned.tools?.length ?? 0) + 1 })));
       controller.close();
