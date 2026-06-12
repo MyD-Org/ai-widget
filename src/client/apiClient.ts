@@ -1,4 +1,4 @@
-import { ApiError, type AiChatConfig, type ChatEvent, type Message } from '../types';
+import { ApiError, type AiChatConfig, type Card, type ChatEvent, type Message } from '../types';
 import { parseSse, type RawSseEvent } from './sse';
 
 type FetchFn = typeof fetch;
@@ -31,6 +31,8 @@ export function toChatEvent(raw: RawSseEvent): ChatEvent | null {
         stoppedByMaxRounds: (data.stopped_by_max_rounds as boolean) ?? false,
         stopReason: (data.stop_reason as string) ?? '',
       };
+    case 'card':
+      return { type: 'card', card: data as unknown as Card };
     case 'error':
       return { type: 'error', code: (data.code as string) ?? (data.error as string) ?? 'error' };
     case 'debug_context':

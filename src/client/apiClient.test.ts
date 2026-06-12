@@ -17,6 +17,11 @@ describe('toChatEvent', () => {
   it('maps a tool event', () => {
     expect(toChatEvent({ event: 'tool', data: '{"name":"search"}' })).toEqual({ type: 'tool', name: 'search' });
   });
+  it('maps a card event to a typed card', () => {
+    const card = { type: 'budget', title: 'Presupuesto #1042', lines: [], actions: [] };
+    const raw = { event: 'card', data: JSON.stringify(card) };
+    expect(toChatEvent(raw)).toEqual({ type: 'card', card });
+  });
 });
 
 describe('createApiClient', () => {
