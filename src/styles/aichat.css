@@ -524,6 +524,7 @@
 /* tarjeta interactiva (presupuesto) */
 .aichat-card {
   align-self: flex-start;
+  flex: none; /* no encoger: overflow:hidden vuelve el min-height 0 y el flex-column lo aplastaría */
   width: 320px;
   max-width: 100%;
   background: var(--aichat-surface);
