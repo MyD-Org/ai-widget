@@ -15,7 +15,7 @@ export interface ChatPresetProps {
 export function ChatPanel({ config, branding, labels, showActivity = false, className }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   return (
-    <div className={`aichat-root ${className ?? ''}`} style={brandingStyle(branding)}>
+    <div className={`aichat-root aichat-fill ${className ?? ''}`} style={brandingStyle(branding)}>
       <AiChatProvider config={config}>
         <ChatBody branding={branding} labels={resolved} showActivity={showActivity} />
       </AiChatProvider>

@@ -73,6 +73,30 @@ describe('ChatPanel', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   });
 
+  it('renders a streamed budget card with a WhatsApp action', async () => {
+    const card = {
+      type: 'budget',
+      title: 'Presupuesto #1042',
+      lines: [],
+      actions: [{ label: 'Pedir por WhatsApp', url: 'https://wa.me/549110000?text=hola', style: 'whatsapp', icon: 'whatsapp' }],
+    };
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'c4' }), { status: 201 }))
+      .mockResolvedValueOnce(
+        sseResponse([
+          'event: text\ndata: {"delta":"Te armé el presupuesto"}\n\n',
+          `event: card\ndata: ${JSON.stringify(card)}\n\n`,
+          'event: done\ndata: {}\n\n',
+        ]),
+      );
+    render(<ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' }} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'precio{Enter}');
+    expect(await screen.findByText('Presupuesto #1042')).toBeInTheDocument();
+    const wa = screen.getByRole('link', { name: 'Pedir por WhatsApp' });
+    expect(wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\//);
+  });
+
   it('shows a mapped error message on 429', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
     fetchMock

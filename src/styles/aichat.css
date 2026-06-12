@@ -9,6 +9,7 @@
   --aichat-elevated: #f4f2ee; /* burbuja del asistente */
   --aichat-text: #1c1917; /* tinta cálida */
   --aichat-muted: #78716c; /* gris cálido */
+  --aichat-whatsapp: #25d366;
   --aichat-border: rgba(28, 25, 23, 0.08);
   --aichat-ring: rgba(28, 25, 23, 0.13);
   --aichat-radius: 18px;
@@ -28,6 +29,11 @@
 .aichat-root *::before,
 .aichat-root *::after {
   box-sizing: border-box;
+}
+/* ChatPanel (inline): llena la altura de su contenedor para que el log scrollee
+   adentro en vez de crecer sin fin. El ChatDrawer no lo necesita (contenedor fixed). */
+.aichat-fill {
+  height: 100%;
 }
 
 /* panel */
@@ -104,6 +110,7 @@
 /* log */
 .aichat-log {
   flex: 1;
+  min-height: 0; /* permite que el log encoja y scrollee dentro del flex column */
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -511,5 +518,102 @@
   .aichat-send,
   .aichat-input {
     transition: none;
+  }
+}
+
+/* tarjeta interactiva (presupuesto) */
+.aichat-card {
+  align-self: flex-start;
+  flex: none; /* no encoger: overflow:hidden vuelve el min-height 0 y el flex-column lo aplastaría */
+  width: 320px;
+  max-width: 100%;
+  background: var(--aichat-surface);
+  border: 1px solid var(--aichat-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--aichat-shadow-1);
+  animation: aichat-rise 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.aichat-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--aichat-border);
+}
+.aichat-card-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.aichat-card-subtitle {
+  font-size: 0.75rem;
+  color: var(--aichat-muted);
+}
+.aichat-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.85rem;
+}
+.aichat-card-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.aichat-card-amount {
+  color: var(--aichat-muted);
+  white-space: nowrap;
+}
+.aichat-card-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-top: 1px solid var(--aichat-border);
+  font-weight: 600;
+}
+.aichat-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem 0.875rem;
+  border-top: 1px solid var(--aichat-border);
+}
+.aichat-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    opacity 0.15s ease;
+}
+.aichat-action:active {
+  transform: scale(0.98);
+}
+.aichat-action-primary {
+  background: var(--aichat-primary);
+  color: var(--aichat-on-primary);
+}
+.aichat-action-whatsapp {
+  background: var(--aichat-whatsapp);
+  color: #fff;
+}
+.aichat-action-default {
+  background: transparent;
+  color: var(--aichat-text);
+  border-color: var(--aichat-border);
+}
+@media (prefers-reduced-motion: reduce) {
+  .aichat-card {
+    animation: none;
   }
 }

@@ -58,16 +58,34 @@ export function useConversation(): UseConversation {
   const runStream = useCallback(
     async (conversationId: string, content: string) => {
       let assistant: Message | null = null;
+      const ensureAssistant = (): Message => {
+        if (!assistant) {
+          assistant = { id: localId(), role: 'assistant', text: '' };
+          const created = assistant;
+          setMessages((m) => [...m, created]);
+        }
+        return assistant;
+      };
       for await (const ev of client.streamMessage(conversationId, content)) {
         if (ev.type === 'text') {
-          if (!assistant) {
-            assistant = { id: localId(), role: 'assistant', text: '' };
-            setMessages((m) => [...m, assistant as Message]);
-          }
-          assistant.text += ev.delta;
-          const snapshot = assistant.text;
-          const targetId = assistant.id;
+          const a = ensureAssistant();
+          a.text += ev.delta;
+          const snapshot = a.text;
+          const targetId = a.id;
           setMessages((m) => m.map((x) => (x.id === targetId ? { ...x, text: snapshot } : x)));
+        } else if (ev.type === 'card') {
+          let a = ensureAssistant();
+          if (a.card) {
+            // ya hay una tarjeta en este mensaje → abrir un mensaje nuevo
+            const next: Message = { id: localId(), role: 'assistant', text: '' };
+            setMessages((m) => [...m, next]);
+            assistant = next;
+            a = next;
+          }
+          a.card = ev.card;
+          const targetId = a.id;
+          const card = ev.card;
+          setMessages((m) => m.map((x) => (x.id === targetId ? { ...x, card } : x)));
         } else if (ev.type === 'tool') {
           setActivity({ tool: ev.name });
         } else if (ev.type === 'error') {
