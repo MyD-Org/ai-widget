@@ -327,7 +327,7 @@
 /* form */
 .aichat-form {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.5rem;
   padding: 0.75rem;
   border-top: 1px solid var(--aichat-border);
@@ -336,17 +336,32 @@
 .aichat-input {
   flex: 1;
   min-width: 0;
-  padding: 0.5625rem 0.8125rem;
+  padding: 0.5rem 0.8125rem;
   border: 1px solid var(--aichat-border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--aichat-bg);
   color: var(--aichat-text);
   font: inherit;
   font-size: 0.9rem;
+  line-height: 1.45;
   outline: none;
+  resize: none;
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--aichat-border) transparent;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+}
+.aichat-input::-webkit-scrollbar {
+  width: 8px;
+}
+.aichat-input::-webkit-scrollbar-thumb {
+  background: var(--aichat-border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 .aichat-input::placeholder {
   color: var(--aichat-muted);

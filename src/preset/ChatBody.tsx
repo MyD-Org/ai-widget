@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useConversation } from '../hooks/useConversation';
 import { labelForError, type Labels } from './labels';
 import { Markdown } from './Markdown';
@@ -16,6 +16,7 @@ export function ChatBody({ branding, labels, showActivity }: { branding?: Brandi
   const { messages, status, activity, error, send } = useConversation();
   const [draft, setDraft] = useState('');
   const logRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const title = branding?.title ?? labels.headerTitle;
   const streaming = status === 'streaming';
@@ -28,10 +29,30 @@ export function ChatBody({ branding, labels, showActivity }: { branding?: Brandi
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, streaming, activity]);
 
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  // Auto-crece el textarea con el contenido (reset a 'auto' para poder achicar también).
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [draft]);
+
+  const submit = () => {
     send(draft);
     setDraft('');
+  };
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    submit();
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter envía; Shift+Enter inserta salto de línea. Respeta IME (isComposing).
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      submit();
+    }
   };
 
   return (
@@ -86,11 +107,14 @@ export function ChatBody({ branding, labels, showActivity }: { branding?: Brandi
       {error && <div className="aichat-error">{labelForError(error.code, labels)}</div>}
 
       <form className="aichat-form" onSubmit={onSubmit}>
-        <input
+        <textarea
+          ref={inputRef}
           className="aichat-input"
+          rows={1}
           value={draft}
           placeholder={labels.placeholder}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onKeyDown}
         />
         <button
           className="aichat-send"

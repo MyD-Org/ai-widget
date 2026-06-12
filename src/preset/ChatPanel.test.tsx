@@ -56,6 +56,23 @@ describe('ChatPanel', () => {
     expect(screen.queryByText(/\*\*/)).toBeNull();
   });
 
+  it('Shift+Enter inserta salto de línea sin enviar; Enter envía', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'c3' }), { status: 201 }))
+      .mockResolvedValueOnce(sseResponse(['event: done\ndata: {}\n\n']));
+
+    render(<ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' }} />);
+    const ta = screen.getByPlaceholderText('Escribí tu mensaje…') as HTMLTextAreaElement;
+
+    await userEvent.type(ta, 'linea1{Shift>}{Enter}{/Shift}linea2');
+    expect(ta.value).toBe('linea1\nlinea2'); // Shift+Enter metió un salto de línea
+    expect(fetchMock).not.toHaveBeenCalled(); // y NO envió
+
+    await userEvent.type(ta, '{Enter}'); // Enter solo → envía
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  });
+
   it('shows a mapped error message on 429', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
     fetchMock
