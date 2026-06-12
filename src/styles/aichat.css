@@ -276,6 +276,8 @@
   padding: 0.35rem 0.5rem;
   text-align: left;
   white-space: normal; /* dejar envolver para que la tabla quepa sin scroll */
+  overflow-wrap: normal; /* pero NO partir palabras/números a la mitad (corta solo en espacios) */
+  word-break: normal;
   vertical-align: top;
 }
 .aichat-md th {
@@ -467,7 +469,7 @@
 .aichat-drawer {
   position: fixed;
   bottom: 96px;
-  width: 384px;
+  width: 420px;
   max-width: calc(100vw - 32px);
   height: 600px;
   max-height: calc(100vh - 128px);
