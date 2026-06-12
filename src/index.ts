@@ -1,0 +1,10 @@
+export { AiChatProvider, useAiChatContext } from './hooks/AiChatProvider';
+export { useConversation } from './hooks/useConversation';
+export { useChatSession } from './hooks/useChatSession';
+export { createApiClient } from './client/apiClient';
+export { parseSse } from './client/sse';
+export { ApiError } from './types';
+export type { AiChatConfig, Message, Role, ChatEvent, ErrorCode } from './types';
+export type { UseConversation, Status, Activity } from './hooks/useConversation';
+export type { ApiClient } from './client/apiClient';
+export type { ChatSession } from './hooks/useChatSession';
