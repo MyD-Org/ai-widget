@@ -147,6 +147,11 @@
   color: var(--aichat-text);
   border-bottom-left-radius: 6px;
 }
+/* contenido ancho (tablas/código) necesita más aire que el 82% por defecto */
+.aichat-msg-assistant:has(.aichat-table-wrap),
+.aichat-msg-assistant:has(pre) {
+  max-width: 100%;
+}
 @keyframes aichat-rise {
   from {
     opacity: 0;
@@ -238,20 +243,40 @@
   border-left: 3px solid var(--aichat-border);
   color: var(--aichat-muted);
 }
-.aichat-md table {
-  width: 100%;
-  border-collapse: collapse;
+/* contenedor scrolleable con "scroll-shadow": las sombras de borde aparecen
+   solo cuando hay contenido para scrollear (técnica de fondos con
+   background-attachment: local). */
+.aichat-table-wrap {
   margin: 0.5rem 0;
-  font-size: 0.8125rem;
-  display: block;
   overflow-x: auto;
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, var(--aichat-elevated) 30%, rgba(0, 0, 0, 0)) left center,
+    linear-gradient(to left, var(--aichat-elevated) 30%, rgba(0, 0, 0, 0)) right center,
+    radial-gradient(farthest-side at 0 50%, rgba(28, 25, 23, 0.13), rgba(0, 0, 0, 0)) left center,
+    radial-gradient(farthest-side at 100% 50%, rgba(28, 25, 23, 0.13), rgba(0, 0, 0, 0)) right center;
+  background-repeat: no-repeat;
+  background-size:
+    34px 100%,
+    34px 100%,
+    14px 100%,
+    14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+.aichat-md table {
+  width: auto;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
 }
 .aichat-md th,
 .aichat-md td {
   border: 1px solid var(--aichat-border);
   padding: 0.35rem 0.5rem;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal; /* dejar envolver para que la tabla quepa sin scroll */
+  vertical-align: top;
 }
 .aichat-md th {
   background: color-mix(in srgb, var(--aichat-text) 5%, transparent);
