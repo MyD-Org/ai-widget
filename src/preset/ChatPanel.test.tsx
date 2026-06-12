@@ -39,6 +39,23 @@ describe('ChatPanel', () => {
     await waitFor(() => expect(screen.getByText('Hola Fede')).toBeInTheDocument());
   });
 
+  it('renders assistant markdown (bold) instead of raw asterisks', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'c2' }), { status: 201 }))
+      .mockResolvedValueOnce(
+        sseResponse(['event: text\ndata: {"delta":"Hola **Juan**"}\n\n', 'event: done\ndata: {}\n\n']),
+      );
+
+    render(<ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' }} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'hola{Enter}');
+
+    const strong = await screen.findByText('Juan');
+    expect(strong.tagName).toBe('STRONG');
+    // los asteriscos crudos no deben aparecer en el DOM
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+  });
+
   it('shows a mapped error message on 429', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
     fetchMock

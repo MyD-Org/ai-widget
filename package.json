@@ -57,5 +57,8 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
+  },
+  "dependencies": {
+    "markdown-to-jsx": "^7.7.17"
   }
 }

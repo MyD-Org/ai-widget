@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useConversation } from '../hooks/useConversation';
 import { labelForError, type Labels } from './labels';
+import { Markdown } from './Markdown';
 import type { Branding } from './branding';
 
 function SendIcon() {
@@ -57,7 +58,7 @@ export function ChatBody({ branding, labels, showActivity }: { branding?: Brandi
 
         {messages.map((m) => (
           <div key={m.id} className={`aichat-msg aichat-msg-${m.role}`}>
-            {m.text}
+            {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
           </div>
         ))}
 
