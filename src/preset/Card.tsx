@@ -1,5 +1,18 @@
 import type { Card as CardType, CardAction, BudgetCard } from '../types';
 
+// Defensa XSS: solo dejamos pasar esquemas seguros (evita href="javascript:…").
+const SAFE_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']);
+function safeHref(url?: string): string | undefined {
+  if (!url) return undefined;
+  const base = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
+  try {
+    const u = new URL(url, base);
+    return SAFE_SCHEMES.has(u.protocol) ? u.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function ActionIcon({ name }: { name?: CardAction['icon'] }) {
   if (!name) return null;
   const common = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true } as const;
@@ -41,21 +54,23 @@ function ActionIcon({ name }: { name?: CardAction['icon'] }) {
 }
 
 function CardActions({ actions }: { actions: CardAction[] }) {
-  const usable = (actions ?? []).filter((a) => a.url);
+  const usable = (actions ?? [])
+    .map((a) => ({ action: a, href: safeHref(a.url) }))
+    .filter((x): x is { action: CardAction; href: string } => Boolean(x.href));
   if (usable.length === 0) return null;
   return (
     <div className="aichat-card-actions">
-      {usable.map((a, i) => (
+      {usable.map(({ action, href }, i) => (
         <a
           key={i}
-          href={a.url}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
-          download={a.download || undefined}
-          className={`aichat-action aichat-action-${a.style ?? 'default'}`}
+          download={action.download || undefined}
+          className={`aichat-action aichat-action-${action.style ?? 'default'}`}
         >
-          <ActionIcon name={a.icon} />
-          {a.label}
+          <ActionIcon name={action.icon} />
+          {action.label}
         </a>
       ))}
     </div>

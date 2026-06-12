@@ -37,4 +37,19 @@ describe('Card (budget)', () => {
     expect(wa.className).toContain('aichat-action-whatsapp');
     expect(wa).not.toHaveAttribute('download');
   });
+
+  it('drops actions with unsafe url schemes (javascript:)', () => {
+    const malicious: BudgetCard = {
+      type: 'budget',
+      title: 'x',
+      lines: [],
+      actions: [
+        { label: 'Safe', url: 'https://ok.test/' },
+        { label: 'Evil', url: 'javascript:alert(1)' },
+      ],
+    };
+    render(<Card card={malicious} />);
+    expect(screen.getByRole('link', { name: 'Safe' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Evil' })).toBeNull();
+  });
 });
