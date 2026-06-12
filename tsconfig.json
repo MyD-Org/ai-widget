@@ -13,5 +13,5 @@
     "noUnusedParameters": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src"]
+  "include": ["src", "vitest.setup.ts"]
 }
