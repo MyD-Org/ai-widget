@@ -22,6 +22,8 @@ export interface AiChatConfig {
   fetchToken?: () => Promise<string>;
   token?: string;
   persist?: 'session' | 'none';
+  /** Override del fetch (para tests, proxies o transportes mock). Default: global fetch. */
+  fetch?: typeof fetch;
 }
 
 export type ErrorCode = 'auth' | 'not_found' | 'rate_limit' | string;

@@ -13,7 +13,10 @@ const AiChatContext = createContext<AiChatContextValue | null>(null);
 
 export function AiChatProvider({ config, children }: { config: AiChatConfig; children: ReactNode }) {
   const session = useChatSession(config);
-  const client = useMemo(() => createApiClient(config, session.getToken), [config, session.getToken]);
+  const client = useMemo(
+    () => createApiClient(config, session.getToken, config.fetch),
+    [config, session.getToken],
+  );
   const value = useMemo<AiChatContextValue>(() => ({ config, client, session }), [config, client, session]);
   return <AiChatContext.Provider value={value}>{children}</AiChatContext.Provider>;
 }
