@@ -1,15 +1,36 @@
 export type Role = 'user' | 'assistant';
 
+export interface CardAction {
+  label: string;
+  url: string;
+  style?: 'primary' | 'whatsapp' | 'default';
+  icon?: 'download' | 'whatsapp' | 'chat' | 'external';
+  download?: boolean;
+}
+
+export interface BudgetCard {
+  type: 'budget';
+  title: string;
+  subtitle?: string;
+  lines: { label: string; qty?: number; amount?: string }[];
+  total?: { label: string; amount: string };
+  actions: CardAction[];
+}
+
+export type Card = BudgetCard;
+
 export interface Message {
   id: string;
   role: Role;
   text: string;
   created_at?: string;
+  card?: Card;
 }
 
 export type ChatEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }
+  | { type: 'card'; card: Card }
   | { type: 'done'; usage: unknown; rounds: number; stoppedByMaxRounds: boolean; stopReason: string }
   | { type: 'error'; code: string }
   | { type: 'debug_context'; data: unknown }
