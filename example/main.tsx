@@ -36,6 +36,7 @@ function App() {
   const [profile, setProfile] = useState('');
   const [mode, setMode] = useState<'panel' | 'drawer'>('panel');
   const [showActivity, setShowActivity] = useState(true);
+  const [accent, setAccent] = useState('#1c1917');
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,6 +103,10 @@ function App() {
             <option value="drawer">ChatDrawer (flotante)</option>
           </select>
         </label>
+        <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12, color: '#666', gap: 4 }}>
+          Acento (primaryColor)
+          <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} style={{ width: 48, height: 32, padding: 0, border: '1px solid #ccc', borderRadius: 6 }} />
+        </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
           <input type="checkbox" checked={showActivity} onChange={(e) => setShowActivity(e.target.checked)} />
           showActivity
@@ -110,13 +115,13 @@ function App() {
 
       {config && mode === 'panel' && (
         <div style={{ height: 560, maxWidth: 480 }}>
-          <ChatPanel key={widgetKey} config={config} showActivity={showActivity} branding={{ title: 'Central Led' }} />
+          <ChatPanel key={widgetKey} config={config} showActivity={showActivity} branding={{ title: 'Central Led', primaryColor: accent }} />
         </div>
       )}
       {config && mode === 'drawer' && (
         <>
           <p style={{ color: '#888' }}>El launcher flotante está abajo a la derecha 👉</p>
-          <ChatDrawer key={widgetKey} config={config} showActivity={showActivity} branding={{ title: 'Central Led' }} />
+          <ChatDrawer key={widgetKey} config={config} showActivity={showActivity} branding={{ title: 'Central Led', primaryColor: accent }} />
         </>
       )}
     </div>

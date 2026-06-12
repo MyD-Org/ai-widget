@@ -1,5 +1,7 @@
 export interface Labels {
   headerTitle: string;
+  statusOnline: string;
+  emptyState: string;
   placeholder: string;
   sendLabel: string;
   newConversation: string;
@@ -11,6 +13,8 @@ export interface Labels {
 
 export const defaultLabels: Labels = {
   headerTitle: 'Asistente',
+  statusOnline: 'En línea',
+  emptyState: '¿En qué te puedo ayudar?',
   placeholder: 'Escribí tu mensaje…',
   sendLabel: 'Enviar',
   newConversation: 'Nueva conversación',
