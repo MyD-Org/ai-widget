@@ -1,0 +1,39 @@
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build + test sin publicar"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # crear el tag vX.Y.Z post-publish
+  packages: write   # publicar a GitHub Packages (implica read)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        run: npm publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag the published version
+        if: ${{ !inputs.dry_run }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          git tag "v$V"
+          git push origin "v$V"
