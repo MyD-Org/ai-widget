@@ -25,6 +25,16 @@ const wrapper =
       </AiChatProvider>
     );
 
+// Wrapper con conversationId pre-creado (copiloto del operador, ADR 0007).
+const preCreatedWrapper =
+  (conversationId: string, token = 'jwt') =>
+  ({ children }: { children: ReactNode }) =>
+    (
+      <AiChatProvider config={{ baseUrl: 'https://api.test', agentId: 'a', token, conversationId }}>
+        {children}
+      </AiChatProvider>
+    );
+
 beforeEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
@@ -110,6 +120,32 @@ describe('useConversation', () => {
     await waitFor(() => expect(result.current.status).toBe('idle'));
     const cards = result.current.messages.filter((m) => m.role === 'assistant').map((m) => m.card?.title);
     expect(cards).toEqual(['A', 'B']);
+  });
+
+  it('with config.conversationId: loads history and does NOT create a conversation', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    // 1) GET history del hilo pre-creado; 2) POST mensaje (stream).
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: 'h1', role: 'assistant', text: 'Hola, soy el copiloto' }]), { status: 200 }),
+      )
+      .mockResolvedValueOnce(sseResponse(['event: text\ndata: {"delta":"ok"}\n\n', 'event: done\ndata: {}\n\n']));
+
+    const { result } = renderHook(() => useConversation(), { wrapper: preCreatedWrapper('assist-42') });
+    await waitFor(() => expect(result.current.messages.length).toBe(1));
+    expect(result.current.messages[0].text).toBe('Hola, soy el copiloto');
+
+    act(() => {
+      result.current.send('buscá paneles');
+    });
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    // Ninguna llamada fue a POST /v1/conversations (creación). El primer fetch fue GET de historial.
+    const urls = fetchMock.mock.calls.map((c) => `${c[1]?.method ?? 'GET'} ${c[0]}`);
+    expect(urls.some((u) => u.includes('POST') && u.endsWith('/v1/conversations'))).toBe(false);
+    expect(urls[0]).toBe('GET https://api.test/v1/conversations/assist-42/messages');
+    // El POST de mensaje fue al hilo pre-creado.
+    expect(urls.some((u) => u === 'POST https://api.test/v1/conversations/assist-42/messages')).toBe(true);
   });
 
   it('maps a 429 on send to error.code rate_limit', async () => {

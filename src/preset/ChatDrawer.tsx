@@ -5,7 +5,7 @@ import { brandingStyle } from './branding';
 import { ChatBody } from './ChatBody';
 import type { ChatPresetProps } from './ChatPanel';
 
-export function ChatDrawer({ config, branding, labels, showActivity = false, className }: ChatPresetProps) {
+export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   const [open, setOpen] = useState(false);
   const pos = branding?.launcherPosition ?? 'bottom-right';
@@ -14,7 +14,7 @@ export function ChatDrawer({ config, branding, labels, showActivity = false, cla
       {open && (
         <div className={`aichat-drawer aichat-drawer-${pos}`}>
           <AiChatProvider config={config}>
-            <ChatBody branding={branding} labels={resolved} showActivity={showActivity} />
+            <ChatBody branding={branding} labels={resolved} showActivity={showActivity} enableCopy={enableCopy} />
           </AiChatProvider>
         </div>
       )}
