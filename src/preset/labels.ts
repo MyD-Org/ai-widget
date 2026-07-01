@@ -9,6 +9,8 @@ export interface Labels {
   errorAuth: string;
   errorRateLimit: string;
   errorGeneric: string;
+  copyLabel: string;
+  copiedLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -22,6 +24,8 @@ export const defaultLabels: Labels = {
   errorAuth: 'Tu sesión expiró. Recargá la página.',
   errorRateLimit: 'Demasiados mensajes. Probá en un momento.',
   errorGeneric: 'Hubo un problema. Intentá de nuevo.',
+  copyLabel: 'Copiar',
+  copiedLabel: 'Copiado',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {

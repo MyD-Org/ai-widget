@@ -30,11 +30,22 @@ export function useConversation(): UseConversation {
   const convIdRef = useRef<string | null>(null);
   const lastSentRef = useRef<string | null>(null);
 
-  const persist = config.persist !== 'none';
+  // Con conversationId pre-creado (copiloto del operador, ADR 0007) el host dicta el id, así que
+  // no persistimos en sessionStorage por agentId (evita pisar un contacto con otro). Default 'none'.
+  const preCreatedId = config.conversationId;
+  const persist = preCreatedId ? config.persist === 'session' : config.persist !== 'none';
+
+  // Conversación pre-creada: sembramos el id y cargamos su historial (no se crea ninguna). Se
+  // re-corre si cambia el id (p. ej. el operador cambia de contacto en el inbox del CRM).
+  useEffect(() => {
+    if (!preCreatedId || !session.ready) return;
+    convIdRef.current = preCreatedId;
+    client.listMessages(preCreatedId).then(setMessages).catch(() => setMessages([]));
+  }, [preCreatedId, session.ready, client]);
 
   // Resume from sessionStorage on mount once the session is ready.
   useEffect(() => {
-    if (!persist || !session.ready) return;
+    if (preCreatedId || !persist || !session.ready) return;
     const saved = sessionStorage.getItem(storageKey(config.agentId));
     if (!saved || convIdRef.current) return;
     convIdRef.current = saved;
@@ -45,15 +56,20 @@ export function useConversation(): UseConversation {
         sessionStorage.removeItem(storageKey(config.agentId));
         convIdRef.current = null;
       });
-  }, [persist, session.ready, config.agentId, client]);
+  }, [preCreatedId, persist, session.ready, config.agentId, client]);
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (convIdRef.current) return convIdRef.current;
+    // Con conversationId pre-creado nunca se crea una conversación nueva.
+    if (preCreatedId) {
+      convIdRef.current = preCreatedId;
+      return preCreatedId;
+    }
     const { id } = await client.createConversation();
     convIdRef.current = id;
     if (persist) sessionStorage.setItem(storageKey(config.agentId), id);
     return id;
-  }, [client, persist, config.agentId]);
+  }, [client, persist, config.agentId, preCreatedId]);
 
   const runStream = useCallback(
     async (conversationId: string, content: string) => {

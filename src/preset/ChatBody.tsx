@@ -13,11 +13,19 @@ function SendIcon() {
   );
 }
 
-export function ChatBody({ branding, labels, showActivity }: { branding?: Branding; labels: Labels; showActivity: boolean }) {
+export function ChatBody({ branding, labels, showActivity, enableCopy = false }: { branding?: Branding; labels: Labels; showActivity: boolean; enableCopy?: boolean }) {
   const { messages, status, activity, error, send } = useConversation();
   const [draft, setDraft] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const copyMessage = (id: string, text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+    });
+  };
 
   const title = branding?.title ?? labels.headerTitle;
   const streaming = status === 'streaming';
@@ -83,6 +91,15 @@ export function ChatBody({ branding, labels, showActivity }: { branding?: Brandi
             {(m.role === 'user' || m.text.trim() !== '') && (
               <div className={`aichat-msg aichat-msg-${m.role}`}>
                 {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
+                {enableCopy && m.role === 'assistant' && m.text.trim() !== '' && (
+                  <button
+                    type="button"
+                    className="aichat-copy"
+                    onClick={() => copyMessage(m.id, m.text)}
+                  >
+                    {copiedId === m.id ? labels.copiedLabel : labels.copyLabel}
+                  </button>
+                )}
               </div>
             )}
             {m.card && <Card card={m.card} />}

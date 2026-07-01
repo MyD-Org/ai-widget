@@ -43,6 +43,11 @@ export interface AiChatConfig {
   fetchToken?: () => Promise<string>;
   token?: string;
   persist?: 'session' | 'none';
+  /** Conversación pre-creada por el backend. Si se provee, el widget NO crea conversación
+   *  (saltea POST /v1/conversations) y arranca con este id, cargando su historial. Lo usa el
+   *  copiloto del operador en el admin del CRM (un hilo por contacto). Con conversationId, el
+   *  default de `persist` pasa a 'none' (el host dicta el id). Ver ADR 0007 del platform. */
+  conversationId?: string;
   /** Override del fetch (para tests, proxies o transportes mock). Default: global fetch. */
   fetch?: typeof fetch;
 }
