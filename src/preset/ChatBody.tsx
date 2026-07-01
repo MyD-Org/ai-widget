@@ -19,6 +19,9 @@ export function ChatBody({ branding, labels, showActivity, enableCopy = false }:
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Si el usuario scrolleó hacia arriba, dejamos de autoscrollear para no "tironearlo" al fondo
+  // en cada token del streaming. Vuelve a pegarse al fondo si baja hasta el final.
+  const stickToBottom = useRef(true);
 
   const copyMessage = (id: string, text: string) => {
     void navigator.clipboard?.writeText(text).then(() => {
@@ -32,11 +35,19 @@ export function ChatBody({ branding, labels, showActivity, enableCopy = false }:
   const lastIsUser = messages[messages.length - 1]?.role === 'user';
   const showActivityChip = streaming && showActivity && Boolean(activity);
 
-  // Autoscroll al fondo cuando llegan mensajes o cambia el estado de streaming.
+  // Autoscroll al fondo cuando llegan mensajes o cambia el estado de streaming, PERO solo si el
+  // usuario ya está pegado al fondo. Si scrolleó hacia arriba a leer, no lo interrumpimos.
   useEffect(() => {
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
   }, [messages, streaming, activity]);
+
+  // En cada scroll recalculamos si sigue "pegado" al fondo (con un margen de 80px de tolerancia).
+  const onLogScroll = () => {
+    const el = logRef.current;
+    if (!el) return;
+    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   // Auto-crece el textarea con el contenido (reset a 'auto' para poder achicar también).
   useEffect(() => {
@@ -83,7 +94,7 @@ export function ChatBody({ branding, labels, showActivity, enableCopy = false }:
         </div>
       </div>
 
-      <div className="aichat-log" ref={logRef}>
+      <div className="aichat-log" ref={logRef} onScroll={onLogScroll}>
         {messages.length === 0 && !streaming && <div className="aichat-empty">{labels.emptyState}</div>}
 
         {messages.map((m) => (
