@@ -37,8 +37,13 @@ export function useConversation(): UseConversation {
 
   // Conversación pre-creada: sembramos el id y cargamos su historial (no se crea ninguna). Se
   // re-corre si cambia el id (p. ej. el operador cambia de contacto en el inbox del CRM).
+  const loadedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!preCreatedId || !session.ready) return;
+    // Solo recargamos cuando CAMBIA el id. Si el host re-renderiza (y recrea config/client),
+    // repisar el estado local borraría el mensaje optimista en pleno streaming y las cards.
+    if (loadedFor.current === preCreatedId) return;
+    loadedFor.current = preCreatedId;
     convIdRef.current = preCreatedId;
     client.listMessages(preCreatedId).then(setMessages).catch(() => setMessages([]));
   }, [preCreatedId, session.ready, client]);

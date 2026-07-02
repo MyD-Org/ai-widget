@@ -13,7 +13,19 @@ function SendIcon() {
   );
 }
 
-export function ChatBody({ branding, labels, showActivity, enableCopy = false }: { branding?: Branding; labels: Labels; showActivity: boolean; enableCopy?: boolean }) {
+export function ChatBody({
+  branding,
+  labels,
+  showActivity,
+  enableCopy = false,
+  onSendToChannel,
+}: {
+  branding?: Branding;
+  labels: Labels;
+  showActivity: boolean;
+  enableCopy?: boolean;
+  onSendToChannel?: (text: string) => void;
+}) {
   const { messages, status, activity, error, send } = useConversation();
   const [draft, setDraft] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -113,7 +125,13 @@ export function ChatBody({ branding, labels, showActivity, enableCopy = false }:
                 )}
               </div>
             )}
-            {m.card && <Card card={m.card} />}
+            {m.card && (
+              <Card
+                card={m.card}
+                onSendToChannel={onSendToChannel}
+                copiedLabel={labels.copiedLabel}
+              />
+            )}
           </Fragment>
         ))}
 

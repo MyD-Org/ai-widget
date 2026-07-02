@@ -1,19 +1,30 @@
 export type Role = 'user' | 'assistant';
 
-export interface CardAction {
+type CardActionStyle = 'primary' | 'whatsapp' | 'default';
+type CardActionIcon = 'download' | 'whatsapp' | 'chat' | 'external';
+
+// Unión discriminada: `link` navega (usa safeHref); `copy`/`send` invocan un callback del host
+// con texto (no navegan, no tienen url). Retrocompat: una acción SIN `kind` se trata como `link`.
+export type CardAction =
+  | { kind?: 'link'; label: string; url: string; style?: CardActionStyle; icon?: CardActionIcon; download?: boolean }
+  | { kind: 'copy'; label: string; style?: CardActionStyle; icon?: CardActionIcon }
+  | { kind: 'send'; label: string; style?: CardActionStyle; icon?: CardActionIcon };
+
+export interface BudgetLine {
   label: string;
-  url: string;
-  style?: 'primary' | 'whatsapp' | 'default';
-  icon?: 'download' | 'whatsapp' | 'chat' | 'external';
-  download?: boolean;
+  qty?: number;
+  /** Monto numérico por línea (habilita formateo y serialización determinística). */
+  unitPrice?: number;
+  subtotal?: number;
+  /** String preformateado legacy (fallback del render cuando falta `subtotal`). */
+  amount?: string;
 }
 
 export interface BudgetCard {
   type: 'budget';
   title: string;
   subtitle?: string;
-  lines: { label: string; qty?: number; amount?: string }[];
-  total?: { label: string; amount: string };
+  lines: BudgetLine[];
   actions: CardAction[];
 }
 
