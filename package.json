@@ -1,6 +1,6 @@
 {
   "name": "@myd-org/ai-widget",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embeddable React chat widget for ai-api",
   "license": "UNLICENSED",
   "type": "module",
@@ -33,7 +33,8 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build",
     "smoke": "node scripts/smoke.mjs",
-    "example": "vite --config example/vite.config.ts"
+    "example": "vite --config example/vite.config.ts",
+    "release:local": "npm version patch --no-git-tag-version && npm run build && npm pack --pack-destination /tmp"
   },
   "peerDependencies": {
     "react": ">=18",
