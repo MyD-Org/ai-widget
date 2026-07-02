@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { Card as CardType, CardAction, BudgetCard } from '../types';
+import { budgetCardToPlainText, budgetTotal, formatArs } from './budgetSerializer';
 
 // Defensa XSS: solo dejamos pasar esquemas seguros (evita href="javascript:…").
 const SAFE_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']);
@@ -11,6 +13,11 @@ function safeHref(url?: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+// Una acción sin `kind` es un link (retrocompat).
+function actionKind(a: CardAction): 'link' | 'copy' | 'send' {
+  return a.kind ?? 'link';
 }
 
 function ActionIcon({ name }: { name?: CardAction['icon'] }) {
@@ -53,26 +60,77 @@ function ActionIcon({ name }: { name?: CardAction['icon'] }) {
   );
 }
 
-function CardActions({ actions }: { actions: CardAction[] }) {
-  const usable = (actions ?? [])
-    .map((a) => ({ action: a, href: safeHref(a.url) }))
-    .filter((x): x is { action: CardAction; href: string } => Boolean(x.href));
-  if (usable.length === 0) return null;
+// Acciones de la card. `link` navega (safeHref). `copy`/`send` invocan un callback del host con
+// el texto serializado de ESTA card (no navegan). El estado "Copiado" es local por-card.
+function CardActions({
+  card,
+  onSendToChannel,
+  copiedLabel,
+}: {
+  card: CardType;
+  onSendToChannel?: (text: string) => void;
+  copiedLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const actions = card.actions ?? [];
+
+  const serialized = () => budgetCardToPlainText(card);
+
+  const onCopy = () => {
+    void navigator.clipboard?.writeText(serialized()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  type Rendered = { action: CardAction; kind: 'link' | 'copy' | 'send'; href?: string };
+  const rendered = actions
+    .map((action): Rendered | null => {
+      const kind = actionKind(action);
+      if (kind === 'link') {
+        const href = safeHref('url' in action ? action.url : undefined);
+        return href ? { action, kind, href } : null;
+      }
+      // send sin callback del host → no se muestra.
+      if (kind === 'send' && !onSendToChannel) return null;
+      return { action, kind };
+    })
+    .filter((x): x is Rendered => x !== null);
+
+  if (rendered.length === 0) return null;
+
   return (
     <div className="aichat-card-actions">
-      {usable.map(({ action, href }, i) => (
-        <a
-          key={i}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          download={action.download || undefined}
-          className={`aichat-action aichat-action-${action.style ?? 'default'}`}
-        >
-          <ActionIcon name={action.icon} />
-          {action.label}
-        </a>
-      ))}
+      {rendered.map(({ action, kind, href }, i) => {
+        if (kind === 'link') {
+          return (
+            <a
+              key={i}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={('download' in action && action.download) || undefined}
+              className={`aichat-action aichat-action-${action.style ?? 'default'}`}
+            >
+              <ActionIcon name={action.icon} />
+              {action.label}
+            </a>
+          );
+        }
+        const onClick = kind === 'copy' ? onCopy : () => onSendToChannel?.(serialized());
+        const label = kind === 'copy' && copied ? copiedLabel : action.label;
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={onClick}
+            className={`aichat-action aichat-action-${action.style ?? 'default'}`}
+          >
+            <ActionIcon name={action.icon} />
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -92,26 +150,38 @@ function BudgetBody({ card }: { card: BudgetCard }) {
                 {l.qty ? `${l.qty}× ` : ''}
                 {l.label}
               </span>
-              {l.amount && <span className="aichat-card-amount">{l.amount}</span>}
+              {/* Preferimos el monto numérico formateado; fallback al string legacy. */}
+              {l.subtotal != null ? (
+                <span className="aichat-card-amount">{formatArs(l.subtotal)}</span>
+              ) : (
+                l.amount && <span className="aichat-card-amount">{l.amount}</span>
+              )}
             </div>
           ))}
         </div>
       )}
-      {card.total && (
-        <div className="aichat-card-total">
-          <span>{card.total.label}</span>
-          <span>{card.total.amount}</span>
-        </div>
-      )}
+      {/* Total derivado de las líneas: la tarjeta muestra exactamente lo que se copia. */}
+      <div className="aichat-card-total">
+        <span>Total</span>
+        <span>{formatArs(budgetTotal(card))}</span>
+      </div>
     </>
   );
 }
 
-export function Card({ card }: { card: CardType }) {
+export function Card({
+  card,
+  onSendToChannel,
+  copiedLabel = 'Copiado',
+}: {
+  card: CardType;
+  onSendToChannel?: (text: string) => void;
+  copiedLabel?: string;
+}) {
   return (
     <div className="aichat-card">
       {card.type === 'budget' && <BudgetBody card={card} />}
-      <CardActions actions={card.actions} />
+      <CardActions card={card} onSendToChannel={onSendToChannel} copiedLabel={copiedLabel} />
     </div>
   );
 }

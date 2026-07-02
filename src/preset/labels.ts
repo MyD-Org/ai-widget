@@ -11,6 +11,7 @@ export interface Labels {
   errorGeneric: string;
   copyLabel: string;
   copiedLabel: string;
+  sendToChannelLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -26,6 +27,7 @@ export const defaultLabels: Labels = {
   errorGeneric: 'Hubo un problema. Intentá de nuevo.',
   copyLabel: 'Copiar',
   copiedLabel: 'Copiado',
+  sendToChannelLabel: 'Enviar al canal',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {
