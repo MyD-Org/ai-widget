@@ -12,6 +12,7 @@ export interface Labels {
   copyLabel: string;
   copiedLabel: string;
   sendToChannelLabel: string;
+  useBudgetLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -28,6 +29,7 @@ export const defaultLabels: Labels = {
   copyLabel: 'Copiar',
   copiedLabel: 'Copiado',
   sendToChannelLabel: 'Enviar al canal',
+  useBudgetLabel: 'Usar en presupuesto',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {

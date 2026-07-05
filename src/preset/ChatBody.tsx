@@ -4,6 +4,7 @@ import { labelForError, type Labels } from './labels';
 import { Markdown } from './Markdown';
 import { Card } from './Card';
 import type { Branding } from './branding';
+import type { BudgetCard } from '../types';
 
 function SendIcon() {
   return (
@@ -19,12 +20,14 @@ export function ChatBody({
   showActivity,
   enableCopy = false,
   onSendToChannel,
+  onUseBudget,
 }: {
   branding?: Branding;
   labels: Labels;
   showActivity: boolean;
   enableCopy?: boolean;
   onSendToChannel?: (text: string) => void;
+  onUseBudget?: (card: BudgetCard) => void;
 }) {
   const { messages, status, activity, error, send } = useConversation();
   const [draft, setDraft] = useState('');
@@ -129,6 +132,8 @@ export function ChatBody({
               <Card
                 card={m.card}
                 onSendToChannel={onSendToChannel}
+                onUseBudget={onUseBudget}
+                useBudgetLabel={labels.useBudgetLabel}
                 copiedLabel={labels.copiedLabel}
               />
             )}

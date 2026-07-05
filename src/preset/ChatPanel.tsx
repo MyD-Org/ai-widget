@@ -1,4 +1,4 @@
-import type { AiChatConfig } from '../types';
+import type { AiChatConfig, BudgetCard } from '../types';
 import { AiChatProvider } from '../hooks/AiChatProvider';
 import { resolveLabels, type Labels } from './labels';
 import { brandingStyle, type Branding } from './branding';
@@ -16,6 +16,11 @@ export interface ChatPresetProps {
   /** Callback del host para la acción "Enviar al canal" de las budget cards: recibe el texto
    *  serializado de la card y lo prefila en el compose del CRM (no auto-envía). Opcional. */
   onSendToChannel?: (text: string) => void;
+  /** Callback del host para "usar" una budget card como DATO ESTRUCTURADO (no texto): recibe
+   *  la card completa (líneas con qty/unitPrice/materialId) para precargar un editor del host
+   *  (p.ej. el editor de presupuestos de avantec). Si está presente, cada budget card muestra
+   *  un botón extra (label: labels.useBudgetLabel). Opcional. */
+  onUseBudget?: (card: BudgetCard) => void;
 }
 
 export function ChatPanel({
@@ -26,6 +31,7 @@ export function ChatPanel({
   className,
   enableCopy = false,
   onSendToChannel,
+  onUseBudget,
 }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   return (
@@ -37,6 +43,7 @@ export function ChatPanel({
           showActivity={showActivity}
           enableCopy={enableCopy}
           onSendToChannel={onSendToChannel}
+          onUseBudget={onUseBudget}
         />
       </AiChatProvider>
     </div>
