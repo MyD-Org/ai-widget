@@ -13,6 +13,9 @@ export interface ChatPresetProps {
   /** Muestra un botón "Copiar" en cada respuesta del asistente (copia el texto al portapapeles).
    *  Pensado para el copiloto del operador en el admin del CRM. Default: false. Ver ADR 0007. */
   enableCopy?: boolean;
+  /** Muestra el botón "Nueva conversación" en el header (ícono de recarga) que reinicia el chat.
+   *  Opt-in: por defecto el botón no se renderiza. Default: false. */
+  enableNewConversation?: boolean;
   /** Callback del host para la acción "Enviar al canal" de las budget cards: recibe el texto
    *  serializado de la card y lo prefila en el compose del CRM (no auto-envía). Opcional. */
   onSendToChannel?: (text: string) => void;
@@ -30,6 +33,7 @@ export function ChatPanel({
   showActivity = false,
   className,
   enableCopy = false,
+  enableNewConversation = false,
   onSendToChannel,
   onUseBudget,
 }: ChatPresetProps) {
@@ -42,6 +46,7 @@ export function ChatPanel({
           labels={resolved}
           showActivity={showActivity}
           enableCopy={enableCopy}
+          enableNewConversation={enableNewConversation}
           onSendToChannel={onSendToChannel}
           onUseBudget={onUseBudget}
         />

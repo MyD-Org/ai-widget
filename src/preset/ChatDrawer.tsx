@@ -5,7 +5,7 @@ import { brandingStyle } from './branding';
 import { ChatBody } from './ChatBody';
 import type { ChatPresetProps } from './ChatPanel';
 
-export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, onSendToChannel, onUseBudget }: ChatPresetProps) {
+export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableNewConversation = false, onSendToChannel, onUseBudget }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   const [open, setOpen] = useState(false);
   const pos = branding?.launcherPosition ?? 'bottom-right';
@@ -19,6 +19,7 @@ export function ChatDrawer({ config, branding, labels, showActivity = false, cla
               labels={resolved}
               showActivity={showActivity}
               enableCopy={enableCopy}
+              enableNewConversation={enableNewConversation}
               onSendToChannel={onSendToChannel}
               onUseBudget={onUseBudget}
             />

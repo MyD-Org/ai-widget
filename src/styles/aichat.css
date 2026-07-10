@@ -69,6 +69,30 @@
   object-fit: cover;
   box-shadow: var(--aichat-shadow-1);
 }
+.aichat-new {
+  margin-left: auto;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--aichat-muted);
+  background: transparent;
+  border: 1px solid var(--aichat-border);
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.aichat-new:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--aichat-primary);
+}
+.aichat-new:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .aichat-avatar-fallback {
   display: grid;
   place-items: center;
