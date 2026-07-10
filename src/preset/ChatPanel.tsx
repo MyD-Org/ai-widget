@@ -1,4 +1,4 @@
-import type { AiChatConfig } from '../types';
+import type { AiChatConfig, BudgetCard } from '../types';
 import { AiChatProvider } from '../hooks/AiChatProvider';
 import { resolveLabels, type Labels } from './labels';
 import { brandingStyle, type Branding } from './branding';
@@ -13,9 +13,17 @@ export interface ChatPresetProps {
   /** Muestra un botón "Copiar" en cada respuesta del asistente (copia el texto al portapapeles).
    *  Pensado para el copiloto del operador en el admin del CRM. Default: false. Ver ADR 0007. */
   enableCopy?: boolean;
+  /** Muestra el botón "Nueva conversación" en el header (ícono de recarga) que reinicia el chat.
+   *  Opt-in: por defecto el botón no se renderiza. Default: false. */
+  enableNewConversation?: boolean;
   /** Callback del host para la acción "Enviar al canal" de las budget cards: recibe el texto
    *  serializado de la card y lo prefila en el compose del CRM (no auto-envía). Opcional. */
   onSendToChannel?: (text: string) => void;
+  /** Callback del host para "usar" una budget card como DATO ESTRUCTURADO (no texto): recibe
+   *  la card completa (líneas con qty/unitPrice/materialId) para precargar un editor del host
+   *  (p.ej. el editor de presupuestos de avantec). Si está presente, cada budget card muestra
+   *  un botón extra (label: labels.useBudgetLabel). Opcional. */
+  onUseBudget?: (card: BudgetCard) => void;
 }
 
 export function ChatPanel({
@@ -25,7 +33,9 @@ export function ChatPanel({
   showActivity = false,
   className,
   enableCopy = false,
+  enableNewConversation = false,
   onSendToChannel,
+  onUseBudget,
 }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   return (
@@ -36,7 +46,9 @@ export function ChatPanel({
           labels={resolved}
           showActivity={showActivity}
           enableCopy={enableCopy}
+          enableNewConversation={enableNewConversation}
           onSendToChannel={onSendToChannel}
+          onUseBudget={onUseBudget}
         />
       </AiChatProvider>
     </div>

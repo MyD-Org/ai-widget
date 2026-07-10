@@ -62,13 +62,19 @@ function ActionIcon({ name }: { name?: CardAction['icon'] }) {
 
 // Acciones de la card. `link` navega (safeHref). `copy`/`send` invocan un callback del host con
 // el texto serializado de ESTA card (no navegan). El estado "Copiado" es local por-card.
+// `onUseBudget` es una acción DEL HOST (no viaja en el wire): si está presente se agrega un
+// botón extra que entrega la card estructurada (líneas con qty/unitPrice/materialId).
 function CardActions({
   card,
   onSendToChannel,
+  onUseBudget,
+  useBudgetLabel,
   copiedLabel,
 }: {
   card: CardType;
   onSendToChannel?: (text: string) => void;
+  onUseBudget?: (card: BudgetCard) => void;
+  useBudgetLabel?: string;
   copiedLabel: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -97,10 +103,23 @@ function CardActions({
     })
     .filter((x): x is Rendered => x !== null);
 
-  if (rendered.length === 0) return null;
+  // Botón del host: usar la card estructurada (p.ej. precargar el editor de presupuestos).
+  const useBudget = onUseBudget && card.type === 'budget';
+
+  if (rendered.length === 0 && !useBudget) return null;
 
   return (
     <div className="aichat-card-actions">
+      {useBudget && (
+        <button
+          type="button"
+          onClick={() => onUseBudget(card)}
+          className="aichat-action aichat-action-primary"
+        >
+          <ActionIcon name="external" />
+          {useBudgetLabel ?? 'Usar en presupuesto'}
+        </button>
+      )}
       {rendered.map(({ action, kind, href }, i) => {
         if (kind === 'link') {
           return (
@@ -172,16 +191,26 @@ function BudgetBody({ card }: { card: BudgetCard }) {
 export function Card({
   card,
   onSendToChannel,
+  onUseBudget,
+  useBudgetLabel,
   copiedLabel = 'Copiado',
 }: {
   card: CardType;
   onSendToChannel?: (text: string) => void;
+  onUseBudget?: (card: BudgetCard) => void;
+  useBudgetLabel?: string;
   copiedLabel?: string;
 }) {
   return (
     <div className="aichat-card">
       {card.type === 'budget' && <BudgetBody card={card} />}
-      <CardActions card={card} onSendToChannel={onSendToChannel} copiedLabel={copiedLabel} />
+      <CardActions
+        card={card}
+        onSendToChannel={onSendToChannel}
+        onUseBudget={onUseBudget}
+        useBudgetLabel={useBudgetLabel}
+        copiedLabel={copiedLabel}
+      />
     </div>
   );
 }

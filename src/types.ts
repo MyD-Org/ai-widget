@@ -18,6 +18,9 @@ export interface BudgetLine {
   subtotal?: number;
   /** String preformateado legacy (fallback del render cuando falta `subtotal`). */
   amount?: string;
+  /** ID del material/producto en el sistema del host (opcional). Permite que el host
+   *  precargue el ítem exacto en su editor (callback onUseBudget) sin matchear por nombre. */
+  materialId?: number;
 }
 
 export interface BudgetCard {

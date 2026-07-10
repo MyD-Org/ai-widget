@@ -2,8 +2,10 @@ import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEve
 import { useConversation } from '../hooks/useConversation';
 import { labelForError, type Labels } from './labels';
 import { Markdown } from './Markdown';
+import { mdToWhatsApp } from './mdToWhatsApp';
 import { Card } from './Card';
 import type { Branding } from './branding';
+import type { BudgetCard } from '../types';
 
 function SendIcon() {
   return (
@@ -18,15 +20,19 @@ export function ChatBody({
   labels,
   showActivity,
   enableCopy = false,
+  enableNewConversation = false,
   onSendToChannel,
+  onUseBudget,
 }: {
   branding?: Branding;
   labels: Labels;
   showActivity: boolean;
   enableCopy?: boolean;
+  enableNewConversation?: boolean;
   onSendToChannel?: (text: string) => void;
+  onUseBudget?: (card: BudgetCard) => void;
 }) {
-  const { messages, status, activity, error, send } = useConversation();
+  const { messages, status, activity, error, send, reset } = useConversation();
   const [draft, setDraft] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -36,7 +42,9 @@ export function ChatBody({
   const stickToBottom = useRef(true);
 
   const copyMessage = (id: string, text: string) => {
-    void navigator.clipboard?.writeText(text).then(() => {
+    // El operador pega la respuesta en WhatsApp: convertimos el Markdown a su sintaxis
+    // (*negrita*, _cursiva_, • viñetas…) para no copiar los `**` crudos ni aplanar el formato.
+    void navigator.clipboard?.writeText(mdToWhatsApp(text)).then(() => {
       setCopiedId(id);
       setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
     });
@@ -104,6 +112,33 @@ export function ChatBody({
             {branding?.subtitle ?? labels.statusOnline}
           </span>
         </div>
+        {enableNewConversation && (
+        <button
+          type="button"
+          className="aichat-new"
+          onClick={reset}
+          disabled={streaming}
+          aria-label={labels.newConversation}
+          title={labels.newConversation}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+            <path d="M8 16H3v5" />
+          </svg>
+        </button>
+        )}
       </div>
 
       <div className="aichat-log" ref={logRef} onScroll={onLogScroll}>
@@ -129,6 +164,8 @@ export function ChatBody({
               <Card
                 card={m.card}
                 onSendToChannel={onSendToChannel}
+                onUseBudget={onUseBudget}
+                useBudgetLabel={labels.useBudgetLabel}
                 copiedLabel={labels.copiedLabel}
               />
             )}
