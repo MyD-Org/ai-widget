@@ -42,7 +42,9 @@ export function toChatEvent(raw: RawSseEvent): ChatEvent | null {
     case 'debug_tool_result':
       return { type: 'debug_tool_result', data };
     default:
-      return null;
+      // Evento desconocido (p.ej. 'dashboard'): pasa como custom; useConversation lo rutea
+      // a config.onEvent sin renderizarlo.
+      return { type: 'custom', name: raw.event, payload: data };
   }
 }
 
@@ -60,7 +62,7 @@ export function createApiClient(config: AiChatConfig, getToken: TokenGetter, fet
         await fetchImpl(`${config.baseUrl}/v1/conversations`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ agent_id: config.agentId }),
+          body: JSON.stringify({ agent_id: config.agentId, ...(config.kind ? { kind: config.kind } : {}) }),
         }),
       );
       return res.json() as Promise<{ id: string }>;
@@ -74,10 +76,11 @@ export function createApiClient(config: AiChatConfig, getToken: TokenGetter, fet
       return res.json() as Promise<Message[]>;
     },
     async *streamMessage(conversationId: string, content: string, signal?: AbortSignal): AsyncGenerator<ChatEvent> {
+      const pageContext = config.getPageContext?.();
       const res = await fetchImpl(`${config.baseUrl}/v1/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, ...(pageContext !== undefined ? { page_context: pageContext } : {}) }),
         signal,
       });
       if (!res.ok) throw new ApiError(res.status, codeForStatus(res.status));

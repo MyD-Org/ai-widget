@@ -49,7 +49,9 @@ export type ChatEvent =
   | { type: 'error'; code: string }
   | { type: 'debug_context'; data: unknown }
   | { type: 'debug_tool_call'; data: unknown }
-  | { type: 'debug_tool_result'; data: unknown };
+  | { type: 'debug_tool_result'; data: unknown }
+  // Evento SSE que el chat no renderiza (p.ej. 'dashboard'): pasa al host vía config.onEvent.
+  | { type: 'custom'; name: string; payload: unknown };
 
 export interface AiChatConfig {
   baseUrl: string;
@@ -64,6 +66,13 @@ export interface AiChatConfig {
   conversationId?: string;
   /** Override del fetch (para tests, proxies o transportes mock). Default: global fetch. */
   fetch?: typeof fetch;
+  /** Kind de la conversación al crearla (p.ej. 'dashboard_builder' para el AI dashboard builder). */
+  kind?: 'standard' | 'dashboard_builder';
+  /** Contexto de página enviado con CADA mensaje como body.page_context (p.ej. el documento
+   *  dashboard actual). Se evalúa por envío. */
+  getPageContext?: () => unknown;
+  /** Callback para eventos SSE que el chat no renderiza (p.ej. 'dashboard'). */
+  onEvent?: (name: string, payload: unknown) => void;
 }
 
 export type ErrorCode = 'auth' | 'not_found' | 'rate_limit' | string;

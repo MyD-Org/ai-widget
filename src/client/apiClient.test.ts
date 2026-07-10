@@ -60,3 +60,51 @@ describe('createApiClient', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.test/v1/conversations/conv-1/messages');
   });
 });
+
+describe('eventos custom + page_context + kind (dashboard builder)', () => {
+  it('mapea un evento desconocido a custom (passthrough)', () => {
+    const raw: RawSseEvent = { event: 'dashboard', data: '{"version":1,"meta":{"name":"Ventas"}}' };
+    expect(toChatEvent(raw)).toEqual({
+      type: 'custom',
+      name: 'dashboard',
+      payload: { version: 1, meta: { name: 'Ventas' } },
+    });
+  });
+
+  it('createConversation manda kind cuando está configurado', async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+      return new Response('{"id":"c1"}', { status: 201 });
+    }) as typeof fetch;
+    const client = createApiClient(
+      { baseUrl: 'http://x', agentId: 'a1', token: 't', kind: 'dashboard_builder' },
+      () => 't',
+      fetchImpl,
+    );
+    await client.createConversation();
+    expect(calls[0].body).toEqual({ agent_id: 'a1', kind: 'dashboard_builder' });
+  });
+
+  it('streamMessage incluye page_context de getPageContext', async () => {
+    const calls: Array<{ body: unknown }> = [];
+    const sse = 'event: done\ndata: {}\n\n';
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(sse));
+        controller.close();
+      },
+    });
+    const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ body: JSON.parse(String(init?.body)) });
+      return { ok: true, status: 200, body } as unknown as Response;
+    }) as typeof fetch;
+    const client = createApiClient(
+      { baseUrl: 'http://x', agentId: 'a1', token: 't', getPageContext: () => ({ version: 1 }) },
+      () => 't',
+      fetchImpl,
+    );
+    for await (const _ev of client.streamMessage('c1', 'hola')) { /* drain */ }
+    expect(calls[0].body).toEqual({ content: 'hola', page_context: { version: 1 } });
+  });
+});

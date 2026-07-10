@@ -109,6 +109,9 @@ export function useConversation(): UseConversation {
           setMessages((m) => m.map((x) => (x.id === targetId ? { ...x, card } : x)));
         } else if (ev.type === 'tool') {
           setActivity({ tool: ev.name });
+        } else if (ev.type === 'custom') {
+          // Evento que el chat no renderiza (p.ej. 'dashboard'): lo consume el host.
+          config.onEvent?.(ev.name, ev.payload);
         } else if (ev.type === 'error') {
           throw new ApiError(0, ev.code);
         } else if (ev.type === 'done') {
