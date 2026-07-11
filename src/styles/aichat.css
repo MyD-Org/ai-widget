@@ -48,6 +48,15 @@
   box-shadow: var(--aichat-shadow-1);
 }
 
+/* Variante dock (AI dashboard builder): integrada a la vista, no "tarjeta flotante". */
+.aichat-dock .aichat-panel {
+  border-radius: 0;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
 /* header */
 .aichat-header {
   display: flex;

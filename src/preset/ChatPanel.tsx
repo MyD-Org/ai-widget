@@ -24,6 +24,10 @@ export interface ChatPresetProps {
    *  (p.ej. el editor de presupuestos de avantec). Si está presente, cada budget card muestra
    *  un botón extra (label: labels.useBudgetLabel). Opcional. */
   onUseBudget?: (card: BudgetCard) => void;
+  /** 'card' (default): panel flotante con borde/radio/sombra. 'dock': integrado a la vista
+   *  (full-height, sin radio ni sombra, solo borde izquierdo) — p.ej. el dock del AI
+   *  dashboard builder. */
+  variant?: 'card' | 'dock';
 }
 
 export function ChatPanel({
@@ -36,10 +40,14 @@ export function ChatPanel({
   enableNewConversation = false,
   onSendToChannel,
   onUseBudget,
+  variant = 'card',
 }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   return (
-    <div className={`aichat-root aichat-fill ${className ?? ''}`} style={brandingStyle(branding)}>
+    <div
+      className={`aichat-root aichat-fill ${variant === 'dock' ? 'aichat-dock' : ''} ${className ?? ''}`}
+      style={brandingStyle(branding)}
+    >
       <AiChatProvider config={config}>
         <ChatBody
           branding={branding}
