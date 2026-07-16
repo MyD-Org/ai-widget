@@ -24,6 +24,12 @@ export interface ChatPresetProps {
    *  (p.ej. el editor de presupuestos de avantec). Si está presente, cada budget card muestra
    *  un botón extra (label: labels.useBudgetLabel). Opcional. */
   onUseBudget?: (card: BudgetCard) => void;
+  /** Callback del host para el botón "Copiar" de cada respuesta del asistente (requiere
+   *  enableCopy). Si está presente, en vez de copiar al portapapeles la acción del botón pasa
+   *  a llamar a este callback con el texto (ya convertido a formato WhatsApp). Se usa en el
+   *  copiloto del CRM para insertar la sugerencia directamente en el draft del operador; el
+   *  label sigue siendo "Copiar" para no romper el reconocimiento visual. Opcional. */
+  onUseMessage?: (text: string) => void;
   /** 'card' (default): panel flotante con borde/radio/sombra. 'dock': integrado a la vista
    *  (full-height, sin radio ni sombra, solo borde izquierdo) — p.ej. el dock del AI
    *  dashboard builder. */
@@ -40,6 +46,7 @@ export function ChatPanel({
   enableNewConversation = false,
   onSendToChannel,
   onUseBudget,
+  onUseMessage,
   variant = 'card',
 }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
@@ -57,6 +64,7 @@ export function ChatPanel({
           enableNewConversation={enableNewConversation}
           onSendToChannel={onSendToChannel}
           onUseBudget={onUseBudget}
+          onUseMessage={onUseMessage}
         />
       </AiChatProvider>
     </div>

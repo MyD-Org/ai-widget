@@ -23,6 +23,7 @@ export function ChatBody({
   enableNewConversation = false,
   onSendToChannel,
   onUseBudget,
+  onUseMessage,
 }: {
   branding?: Branding;
   labels: Labels;
@@ -31,6 +32,7 @@ export function ChatBody({
   enableNewConversation?: boolean;
   onSendToChannel?: (text: string) => void;
   onUseBudget?: (card: BudgetCard) => void;
+  onUseMessage?: (text: string) => void;
 }) {
   const { messages, status, activity, error, send, reset } = useConversation();
   const [draft, setDraft] = useState('');
@@ -42,12 +44,22 @@ export function ChatBody({
   const stickToBottom = useRef(true);
 
   const copyMessage = (id: string, text: string) => {
-    // El operador pega la respuesta en WhatsApp: convertimos el Markdown a su sintaxis
-    // (*negrita*, _cursiva_, • viñetas…) para no copiar los `**` crudos ni aplanar el formato.
-    void navigator.clipboard?.writeText(mdToWhatsApp(text)).then(() => {
+    // Formato WhatsApp para no dejar los `**` crudos ni aplanar el formato: aplica igual sea que
+    // el destino final sea el portapapeles o el compose del CRM (que reenvía a WhatsApp).
+    const rendered = mdToWhatsApp(text);
+    const done = () => {
       setCopiedId(id);
       setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
-    });
+    };
+    // Si el host cablea onUseMessage (copiloto del CRM), la acción del botón pasa a "insertar
+    // en el draft del operador" en vez de ir al portapapeles. Mantenemos el label "Copiar" y el
+    // feedback "Copiado" para no romper el reconocimiento visual.
+    if (onUseMessage) {
+      onUseMessage(rendered);
+      done();
+      return;
+    }
+    void navigator.clipboard?.writeText(rendered).then(done);
   };
 
   const title = branding?.title ?? labels.headerTitle;
