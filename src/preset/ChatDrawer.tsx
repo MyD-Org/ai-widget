@@ -8,11 +8,12 @@ import type { ChatPresetProps } from './ChatPanel';
 export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableNewConversation = false, onSendToChannel, onUseBudget, onUseMessage }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const pos = branding?.launcherPosition ?? 'bottom-right';
   return (
     <div className={`aichat-root ${className ?? ''}`} style={brandingStyle(branding)}>
       {open && (
-        <div className={`aichat-drawer aichat-drawer-${pos}`}>
+        <div className={`aichat-drawer aichat-drawer-${pos} ${expanded ? 'aichat-drawer-expanded' : ''}`}>
           <AiChatProvider config={config}>
             <ChatBody
               branding={branding}
@@ -20,6 +21,8 @@ export function ChatDrawer({ config, branding, labels, showActivity = false, cla
               showActivity={showActivity}
               enableCopy={enableCopy}
               enableNewConversation={enableNewConversation}
+              expanded={expanded}
+              onToggleExpand={() => setExpanded((e) => !e)}
               onSendToChannel={onSendToChannel}
               onUseBudget={onUseBudget}
               onUseMessage={onUseMessage}

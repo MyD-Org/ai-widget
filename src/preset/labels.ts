@@ -5,6 +5,8 @@ export interface Labels {
   placeholder: string;
   sendLabel: string;
   newConversation: string;
+  expand: string;
+  collapse: string;
   launcherAria: string;
   errorAuth: string;
   errorRateLimit: string;
@@ -22,6 +24,8 @@ export const defaultLabels: Labels = {
   placeholder: 'Escribí tu mensaje…',
   sendLabel: 'Enviar',
   newConversation: 'Nueva conversación',
+  expand: 'Expandir',
+  collapse: 'Contraer',
   launcherAria: 'Abrir chat',
   errorAuth: 'Tu sesión expiró. Recargá la página.',
   errorRateLimit: 'Demasiados mensajes. Probá en un momento.',

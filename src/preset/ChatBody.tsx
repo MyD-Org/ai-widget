@@ -21,6 +21,8 @@ export function ChatBody({
   showActivity,
   enableCopy = false,
   enableNewConversation = false,
+  expanded = false,
+  onToggleExpand,
   onSendToChannel,
   onUseBudget,
   onUseMessage,
@@ -30,6 +32,11 @@ export function ChatBody({
   showActivity: boolean;
   enableCopy?: boolean;
   enableNewConversation?: boolean;
+  /** Estado actual del panel expandido (solo relevante si onToggleExpand está presente). */
+  expanded?: boolean;
+  /** Si está presente, muestra un botón de expandir/contraer en el header que llama a este
+   *  callback. Lo cablea el ChatDrawer (variante flotante); el dock no lo pasa. Opcional. */
+  onToggleExpand?: () => void;
   onSendToChannel?: (text: string) => void;
   onUseBudget?: (card: BudgetCard) => void;
   onUseMessage?: (text: string) => void;
@@ -124,32 +131,82 @@ export function ChatBody({
             {branding?.subtitle ?? labels.statusOnline}
           </span>
         </div>
-        {enableNewConversation && (
-        <button
-          type="button"
-          className="aichat-new"
-          onClick={reset}
-          disabled={streaming}
-          aria-label={labels.newConversation}
-          title={labels.newConversation}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-            <path d="M21 3v5h-5" />
-            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-            <path d="M8 16H3v5" />
-          </svg>
-        </button>
+        {(onToggleExpand || enableNewConversation) && (
+          <div className="aichat-header-actions">
+            {onToggleExpand && (
+              <button
+                type="button"
+                className="aichat-new aichat-expand"
+                onClick={onToggleExpand}
+                aria-label={expanded ? labels.collapse : labels.expand}
+                aria-pressed={expanded}
+                title={expanded ? labels.collapse : labels.expand}
+              >
+                {expanded ? (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 14h6v6" />
+                    <path d="M20 10h-6V4" />
+                    <path d="m14 10 7-7" />
+                    <path d="m3 21 7-7" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M15 3h6v6" />
+                    <path d="M9 21H3v-6" />
+                    <path d="M21 3l-7 7" />
+                    <path d="M3 21l7-7" />
+                  </svg>
+                )}
+              </button>
+            )}
+            {enableNewConversation && (
+              <button
+                type="button"
+                className="aichat-new"
+                onClick={reset}
+                disabled={streaming}
+                aria-label={labels.newConversation}
+                title={labels.newConversation}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M8 16H3v5" />
+                </svg>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -191,7 +248,6 @@ export function ChatBody({
               <i />
               <i />
             </span>
-            <span className="aichat-activity-text">{activity!.tool}…</span>
           </div>
         )}
         {streaming && lastIsUser && !showActivityChip && (
