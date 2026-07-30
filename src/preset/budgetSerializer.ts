@@ -16,31 +16,21 @@ export function budgetTotal(card: BudgetCard): number {
   return card.lines.reduce((sum, l) => sum + (l.subtotal ?? 0), 0);
 }
 
-// Desglose "(N x $unit)" derivable SOLO de la card: una única línea con qty>0 cuyo total
-// se divide exactamente por qty. Si no es derivable, se omite (sin paréntesis).
-function breakdown(card: BudgetCard, amount: number): string {
-  if (card.lines.length !== 1) return '';
-  const qty = card.lines[0].qty;
-  if (!qty || qty <= 0) return '';
-  if (amount % qty !== 0) return '';
-  return ` (${qty} x ${formatArs(amount / qty)})`;
-}
-
 // Serializa UNA card a texto plano determinístico. Lee SOLO la card (nunca `m.text`).
-// Precios de lista pública, total derivado de las líneas. Sin emojis, sin markdown, sin
-// disclaimer, sin "orientativo", sin relleno.
+// Una línea por producto con su precio y nada más: sin "Cantidad/Precio unitario/Subtotal", que
+// para el caso típico (un producto) repetían tres veces el mismo número. El `Total` solo aparece
+// cuando hay más de un producto — con uno solo sería idéntico a su precio.
+// Precios de lista pública. Sin emojis, sin markdown, sin disclaimer, sin relleno.
 export function budgetCardToPlainText(card: BudgetCard): string {
   const parts: string[] = [card.title];
   if (card.subtitle) parts.push(card.subtitle);
 
   for (const l of card.lines) {
-    parts.push(`Cantidad: ${l.qty ?? 0}`);
-    parts.push(`Precio unitario: ${formatArs(l.unitPrice ?? 0)}`);
-    parts.push(`Subtotal: ${formatArs(l.subtotal ?? 0)}`);
+    const qty = l.qty && l.qty > 1 ? `${l.qty}x ` : '';
+    parts.push(`${qty}${l.label}: ${formatArs(l.subtotal ?? 0)}`);
   }
 
-  const total = budgetTotal(card);
-  parts.push(`Total: ${formatArs(total)}${breakdown(card, total)}`);
+  if (card.lines.length !== 1) parts.push(`Total: ${formatArs(budgetTotal(card))}`);
 
   return parts.join('\n');
 }

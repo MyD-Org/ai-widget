@@ -90,6 +90,9 @@ function CardActions({
   };
 
   type Rendered = { action: CardAction; kind: 'link' | 'copy' | 'send'; href?: string };
+  // "Copiar" y "Enviar al canal" terminan en el mismo lugar (el compose del operador) cuando el
+  // host cablea onSendToChannel: dejamos solo "Enviar al canal" para no duplicar la acción.
+  const hasSend = onSendToChannel != null && actions.some((a) => actionKind(a) === 'send');
   const rendered = actions
     .map((action): Rendered | null => {
       const kind = actionKind(action);
@@ -99,6 +102,7 @@ function CardActions({
       }
       // send sin callback del host → no se muestra.
       if (kind === 'send' && !onSendToChannel) return null;
+      if (kind === 'copy' && hasSend) return null;
       return { action, kind };
     })
     .filter((x): x is Rendered => x !== null);
@@ -179,11 +183,14 @@ function BudgetBody({ card }: { card: BudgetCard }) {
           ))}
         </div>
       )}
-      {/* Total derivado de las líneas: la tarjeta muestra exactamente lo que se copia. */}
-      <div className="aichat-card-total">
-        <span>Total</span>
-        <span>{formatArs(budgetTotal(card))}</span>
-      </div>
+      {/* La tarjeta muestra exactamente lo que se envía: con un solo producto el Total sería su
+          mismo precio repetido, así que solo aparece cuando hay más de una línea. */}
+      {card.lines.length !== 1 && (
+        <div className="aichat-card-total">
+          <span>Total</span>
+          <span>{formatArs(budgetTotal(card))}</span>
+        </div>
+      )}
     </>
   );
 }

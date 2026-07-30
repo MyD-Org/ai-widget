@@ -17,12 +17,25 @@ const budget: BudgetCard = {
 };
 
 describe('Card (budget)', () => {
-  it('renders title, subtitle, line and total label', () => {
+  it('renders title, subtitle and line — sin Total con un solo producto', () => {
     render(<Card card={budget} />);
     expect(screen.getByText('Presupuesto #1042')).toBeInTheDocument();
     expect(screen.getByText('Central Led · vence 15/07')).toBeInTheDocument();
     expect(screen.getByText(/Panel LED 60x60 40W/)).toBeInTheDocument();
+    expect(screen.queryByText('Total')).toBeNull();
+  });
+
+  it('muestra Total cuando hay más de un producto', () => {
+    const multi: BudgetCard = {
+      ...budget,
+      lines: [
+        { label: 'Panel LED 60x60 40W', qty: 2, unitPrice: 100, subtotal: 200 },
+        { label: 'Reflector 50W', qty: 1, unitPrice: 300, subtotal: 300 },
+      ],
+    };
+    render(<Card card={multi} />);
     expect(screen.getByText('Total')).toBeInTheDocument();
+    expect(screen.getByText('$500')).toBeInTheDocument();
   });
 
   it('renders actions as links opening a new tab safely', () => {
@@ -79,11 +92,11 @@ describe('Card (budget) copy/send actions', () => {
     });
   });
 
-  it('renders Copiar and Enviar al canal as buttons (not links)', () => {
+  it('renders Enviar al canal as button (not link) y oculta Copiar por redundante', () => {
     render(<Card card={cardA} onSendToChannel={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /Copiar/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Enviar al canal/ })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Copiar/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Enviar al canal/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Copiar/ })).toBeNull();
   });
 
   it('Enviar al canal calls onSendToChannel once with this card serialized text', async () => {
@@ -94,8 +107,8 @@ describe('Card (budget) copy/send actions', () => {
     expect(onSend).toHaveBeenCalledWith(budgetCardToPlainText(cardA));
   });
 
-  it('Copiar writes this card serialized text to clipboard and shows Copiado', async () => {
-    render(<Card card={cardA} onSendToChannel={vi.fn()} copiedLabel="Copiado" />);
+  it('Copiar (sin send disponible) writes this card serialized text to clipboard y muestra Copiado', async () => {
+    render(<Card card={cardA} copiedLabel="Copiado" />);
     await userEvent.click(screen.getByRole('button', { name: /Copiar/ }));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       budgetCardToPlainText(cardA),

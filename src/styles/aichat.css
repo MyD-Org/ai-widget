@@ -78,8 +78,15 @@
   object-fit: cover;
   box-shadow: var(--aichat-shadow-1);
 }
-.aichat-new {
+.aichat-header-actions {
   margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.aichat-new,
+.aichat-expand {
   flex: none;
   display: grid;
   place-items: center;
@@ -94,11 +101,13 @@
   opacity: 0.8;
   transition: opacity 0.15s ease, color 0.15s ease;
 }
-.aichat-new:hover:not(:disabled) {
+.aichat-new:hover:not(:disabled),
+.aichat-expand:hover:not(:disabled) {
   opacity: 1;
   color: var(--aichat-primary);
 }
-.aichat-new:disabled {
+.aichat-new:disabled,
+.aichat-expand:disabled {
   opacity: 0.4;
   cursor: default;
 }
@@ -542,6 +551,19 @@
 .aichat-drawer-bottom-left {
   left: 24px;
   transform-origin: bottom left;
+}
+/* Estado expandido: el panel deja de ser una tarjeta flotante y ocupa el área definida por
+   los insets. Por defecto es casi pantalla completa (margen de 16px); el host puede acotar
+   el área respetando su propio layout (sidebar/topbar) sobrescribiendo estas variables. */
+.aichat-drawer.aichat-drawer-expanded {
+  top: var(--aichat-expanded-top, 16px);
+  right: var(--aichat-expanded-right, 16px);
+  bottom: var(--aichat-expanded-bottom, 16px);
+  left: var(--aichat-expanded-left, 16px);
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
 }
 @keyframes aichat-drawer-in {
   from {
