@@ -17,19 +17,23 @@ describe('budgetCardToPlainText', () => {
       [
         'Opción A – Reflector LED 50W exterior IP65',
         'Luz fría, alta potencia',
-        'Cantidad: 5',
-        'Precio unitario: $9.800',
-        'Subtotal: $49.000',
-        'Total: $49.000 (5 x $9.800)',
+        '5x Reflector LED 50W exterior IP65: $49.000',
       ].join('\n'),
     );
   });
 
-  it('total is derived from the lines (never contradicts them)', () => {
+  it('un solo producto → su precio y nada más (sin Cantidad/unitario/Subtotal/Total)', () => {
     const out = budgetCardToPlainText(baseCard);
-    // 5 × 9.800 = 49.000 y el desglose usa el mismo precio unitario público.
-    expect(out).toContain('Total: $49.000 (5 x $9.800)');
+    expect(out).not.toMatch(/Cantidad|Precio unitario|Subtotal|Total/);
     expect(out).not.toMatch(/mayorista/i);
+  });
+
+  it('qty 1 → sin prefijo de cantidad', () => {
+    const one: BudgetCard = {
+      ...baseCard,
+      lines: [{ label: 'Atornillador Durlero Brushless 20V', qty: 1, unitPrice: 153978, subtotal: 153978 }],
+    };
+    expect(budgetCardToPlainText(one)).toContain('Atornillador Durlero Brushless 20V: $153.978');
   });
 
   it('is channel-safe: no disclaimer, no "orientativo", no markdown, no emoji', () => {
@@ -51,16 +55,16 @@ describe('budgetCardToPlainText', () => {
       expect(out.split('\n\n')).toHaveLength(1);
     });
 
-    it('missing subtitle → title followed directly by Cantidad, no blank line', () => {
+    it('missing subtitle → title followed directly by the product line, no blank line', () => {
       const { subtitle: _omit, ...noSub } = baseCard;
       const out = budgetCardToPlainText(noSub as BudgetCard);
       const lines = out.split('\n');
       expect(lines[0]).toBe('Opción A – Reflector LED 50W exterior IP65');
-      expect(lines[1]).toBe('Cantidad: 5');
+      expect(lines[1]).toBe('5x Reflector LED 50W exterior IP65: $49.000');
       expect(out).not.toContain('\n\n');
     });
 
-    it('multi-line total → sum of subtotals, no (N x unit) parenthesis', () => {
+    it('multi-line → una línea por producto y Total = suma de subtotales', () => {
       const multi: BudgetCard = {
         ...baseCard,
         lines: [
@@ -69,8 +73,9 @@ describe('budgetCardToPlainText', () => {
         ],
       };
       const out = budgetCardToPlainText(multi);
+      expect(out).toContain('2x A: $200');
+      expect(out).toContain('3x B: $300');
       expect(out).toContain('Total: $500');
-      expect(out).not.toMatch(/\(.*x.*\)/);
     });
 
     it('empty lines / zero amounts → valid text, $0, no crash', () => {
@@ -85,9 +90,7 @@ describe('budgetCardToPlainText', () => {
         actions: [],
       };
       const outZero = budgetCardToPlainText(zeroLine);
-      expect(outZero).toContain('Cantidad: 0');
-      expect(outZero).toContain('Precio unitario: $0');
-      expect(outZero).toContain('Subtotal: $0');
+      expect(outZero).toBe(['Cero', 'x: $0'].join('\n'));
       expect(outZero).not.toMatch(/[*_#|]/);
     });
   });
