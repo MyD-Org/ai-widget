@@ -29,7 +29,6 @@ export function ChatBody({
   labels,
   showActivity,
   enableCopy = false,
-  enableNewConversation = false,
   enableHistory = false,
   expanded = false,
   onToggleExpand,
@@ -41,7 +40,6 @@ export function ChatBody({
   labels: Labels;
   showActivity: boolean;
   enableCopy?: boolean;
-  enableNewConversation?: boolean;
   enableHistory?: boolean;
   /** Estado actual del panel expandido (solo relevante si onToggleExpand está presente). */
   expanded?: boolean;
@@ -178,7 +176,7 @@ export function ChatBody({
             {branding?.subtitle ?? labels.statusOnline}
           </span>
         </div>
-        {(onToggleExpand || enableNewConversation || enableHistory) && (
+        {(onToggleExpand || enableHistory) && (
           <div className="aichat-header-actions">
             {enableHistory && (
               <button
@@ -238,33 +236,6 @@ export function ChatBody({
                     <path d="M3 21l7-7" />
                   </svg>
                 )}
-              </button>
-            )}
-            {enableNewConversation && (
-              <button
-                type="button"
-                className="aichat-new"
-                onClick={reset}
-                disabled={streaming}
-                aria-label={labels.newConversation}
-                title={labels.newConversation}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                  <path d="M21 3v5h-5" />
-                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                  <path d="M8 16H3v5" />
-                </svg>
               </button>
             )}
           </div>

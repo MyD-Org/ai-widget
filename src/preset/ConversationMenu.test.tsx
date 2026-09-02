@@ -131,6 +131,12 @@ describe('menú de conversaciones', () => {
     await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'));
   });
 
+  it('el header no tiene botón de nueva conversación: la acción vive sólo en el popover', () => {
+    render(<ChatPanel config={config} enableHistory />);
+    const header = screen.getByRole('button', { name: 'Conversaciones' }).parentElement!;
+    expect(header.querySelectorAll('button')).toHaveLength(1);
+  });
+
   it('con conversationId pre-creado el historial no se ofrece', () => {
     render(<ChatPanel config={{ ...config, conversationId: 'fijo' }} enableHistory />);
     expect(screen.queryByRole('button', { name: 'Conversaciones' })).toBeNull();

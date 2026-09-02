@@ -5,7 +5,7 @@ import { brandingStyle } from './branding';
 import { ChatBody } from './ChatBody';
 import type { ChatPresetProps } from './ChatPanel';
 
-export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableNewConversation = false, enableHistory = false, onSendToChannel, onUseBudget, onUseMessage }: ChatPresetProps) {
+export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableHistory = false, onSendToChannel, onUseBudget, onUseMessage }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -20,7 +20,6 @@ export function ChatDrawer({ config, branding, labels, showActivity = false, cla
               labels={resolved}
               showActivity={showActivity}
               enableCopy={enableCopy}
-              enableNewConversation={enableNewConversation}
               enableHistory={enableHistory && !config.conversationId}
               expanded={expanded}
               onToggleExpand={() => setExpanded((e) => !e)}
