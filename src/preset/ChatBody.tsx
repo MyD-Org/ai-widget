@@ -114,11 +114,15 @@ export function ChatBody({
   };
 
   // Auto-crece el textarea con el contenido (reset a 'auto' para poder achicar también).
+  // El scroll se habilita SOLO al tocar el techo: con una línea no hay nada que scrollear,
+  // y dejarlo en 'auto' fijo hacía aparecer la barra con un par de caracteres.
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    const full = el.scrollHeight;
+    el.style.height = `${Math.min(full, 120)}px`;
+    el.style.overflowY = full > 120 ? 'auto' : 'hidden';
   }, [draft]);
 
   // El listado se pide en cada apertura: crear una conversación o renombrarla del lado del
