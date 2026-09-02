@@ -3,6 +3,10 @@
   "version": "0.2.0",
   "description": "Embeddable React chat widget for ai-api",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MyD-Org/ai-widget.git"
+  },
   "type": "module",
   "sideEffects": [
     "**/*.css"
