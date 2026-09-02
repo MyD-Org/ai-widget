@@ -16,6 +16,11 @@ export interface ChatPresetProps {
   /** Muestra el botón "Nueva conversación" en el header (ícono de recarga) que reinicia el chat.
    *  Opt-in: por defecto el botón no se renderiza. Default: false. */
   enableNewConversation?: boolean;
+  /** Muestra el botón de historial en el header (ícono de lista) que abre el menú de
+   *  conversaciones: permite abrir una conversación anterior o arrancar una nueva. Requiere
+   *  que el backend exponga GET /v1/conversations para el end-user. Opt-in. Default: false.
+   *  No tiene efecto con `config.conversationId` (el host dicta el hilo). */
+  enableHistory?: boolean;
   /** Callback del host para la acción "Enviar al canal" de las budget cards: recibe el texto
    *  serializado de la card y lo prefila en el compose del CRM (no auto-envía). Opcional. */
   onSendToChannel?: (text: string) => void;
@@ -44,6 +49,7 @@ export function ChatPanel({
   className,
   enableCopy = false,
   enableNewConversation = false,
+  enableHistory = false,
   onSendToChannel,
   onUseBudget,
   onUseMessage,
@@ -62,6 +68,7 @@ export function ChatPanel({
           showActivity={showActivity}
           enableCopy={enableCopy}
           enableNewConversation={enableNewConversation}
+          enableHistory={enableHistory && !config.conversationId}
           onSendToChannel={onSendToChannel}
           onUseBudget={onUseBudget}
           onUseMessage={onUseMessage}

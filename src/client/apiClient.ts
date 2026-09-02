@@ -1,4 +1,4 @@
-import { ApiError, type AiChatConfig, type Card, type ChatEvent, type Message } from '../types';
+import { ApiError, type AiChatConfig, type Card, type ChatEvent, type ConversationSummary, type Message } from '../types';
 import { parseSse, type RawSseEvent } from './sse';
 
 type FetchFn = typeof fetch;
@@ -66,6 +66,14 @@ export function createApiClient(config: AiChatConfig, getToken: TokenGetter, fet
         }),
       );
       return res.json() as Promise<{ id: string }>;
+    },
+    async listConversations(): Promise<ConversationSummary[]> {
+      const res = await ensureOk(
+        await fetchImpl(`${config.baseUrl}/v1/conversations`, {
+          headers: authHeaders(),
+        }),
+      );
+      return res.json() as Promise<ConversationSummary[]>;
     },
     async listMessages(conversationId: string): Promise<Message[]> {
       const res = await ensureOk(

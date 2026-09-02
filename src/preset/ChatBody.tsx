@@ -4,8 +4,17 @@ import { labelForError, type Labels } from './labels';
 import { Markdown } from './Markdown';
 import { mdToWhatsApp } from './mdToWhatsApp';
 import { Card } from './Card';
+import { ConversationMenu } from './ConversationMenu';
 import type { Branding } from './branding';
 import type { BudgetCard } from '../types';
+
+function HistoryIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
 
 function SendIcon() {
   return (
@@ -21,6 +30,7 @@ export function ChatBody({
   showActivity,
   enableCopy = false,
   enableNewConversation = false,
+  enableHistory = false,
   expanded = false,
   onToggleExpand,
   onSendToChannel,
@@ -32,6 +42,7 @@ export function ChatBody({
   showActivity: boolean;
   enableCopy?: boolean;
   enableNewConversation?: boolean;
+  enableHistory?: boolean;
   /** Estado actual del panel expandido (solo relevante si onToggleExpand está presente). */
   expanded?: boolean;
   /** Si está presente, muestra un botón de expandir/contraer en el header que llama a este
@@ -41,9 +52,23 @@ export function ChatBody({
   onUseBudget?: (card: BudgetCard) => void;
   onUseMessage?: (text: string) => void;
 }) {
-  const { messages, status, activity, error, send, reset } = useConversation();
+  const {
+    messages,
+    status,
+    activity,
+    error,
+    send,
+    reset,
+    currentId,
+    conversations,
+    conversationsStatus,
+    loadConversations,
+    openConversation,
+  } = useConversation();
   const [draft, setDraft] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyBtnRef = useRef<HTMLButtonElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Si el usuario scrolleó hacia arriba, dejamos de autoscrollear para no "tironearlo" al fondo
@@ -96,6 +121,24 @@ export function ChatBody({
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, [draft]);
 
+  // El listado se pide en cada apertura: crear una conversación o renombrarla del lado del
+  // backend deja stale lo que trajimos antes, y es un GET barato.
+  const openHistory = () => {
+    setHistoryOpen(true);
+    loadConversations();
+  };
+
+  const selectConversation = (id: string) => {
+    setHistoryOpen(false);
+    openConversation(id);
+  };
+
+  const newConversation = () => {
+    setHistoryOpen(false);
+    reset();
+    inputRef.current?.focus();
+  };
+
   const submit = () => {
     send(draft);
     setDraft('');
@@ -131,8 +174,22 @@ export function ChatBody({
             {branding?.subtitle ?? labels.statusOnline}
           </span>
         </div>
-        {(onToggleExpand || enableNewConversation) && (
+        {(onToggleExpand || enableNewConversation || enableHistory) && (
           <div className="aichat-header-actions">
+            {enableHistory && (
+              <button
+                ref={historyBtnRef}
+                type="button"
+                className={`aichat-new ${historyOpen ? 'aichat-new-on' : ''}`}
+                onClick={() => (historyOpen ? setHistoryOpen(false) : openHistory())}
+                aria-label={historyOpen ? labels.closeHistoryLabel : labels.historyLabel}
+                aria-expanded={historyOpen}
+                aria-haspopup="dialog"
+                title={labels.historyLabel}
+              >
+                <HistoryIcon />
+              </button>
+            )}
             {onToggleExpand && (
               <button
                 type="button"
@@ -209,6 +266,21 @@ export function ChatBody({
           </div>
         )}
       </div>
+
+      {enableHistory && (
+        <ConversationMenu
+          open={historyOpen}
+          labels={labels}
+          conversations={conversations}
+          status={conversationsStatus}
+          currentId={currentId}
+          triggerRef={historyBtnRef}
+          onSelect={selectConversation}
+          onNew={newConversation}
+          onRetry={loadConversations}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
 
       <div className="aichat-log" ref={logRef} onScroll={onLogScroll}>
         {messages.length === 0 && !streaming && <div className="aichat-empty">{labels.emptyState}</div>}
