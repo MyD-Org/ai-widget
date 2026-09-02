@@ -5,6 +5,14 @@ export interface Branding {
   subtitle?: string;
   avatarUrl?: string;
   primaryColor?: string;
+  /** Color del texto y los íconos que van ENCIMA del acento: burbuja del usuario, botón
+   *  de enviar, launcher, avatar. Default: blanco.
+   *
+   *  Existe porque el acento no siempre es oscuro. Con un acento claro (un dorado, un
+   *  ámbar, un verde pastel) el blanco encima no llega a contraste legible y hay que
+   *  poner tinta oscura. Sin esta prop, esos tonos quedaban vetados: no por gusto, sino
+   *  porque el texto no se leía. */
+  onPrimaryColor?: string;
   launcherPosition?: 'bottom-right' | 'bottom-left';
 }
 
@@ -25,5 +33,6 @@ export function themeClass(theme: Theme = 'auto'): string {
 export function brandingStyle(branding?: Branding): CSSProperties {
   const style: Record<string, string> = {};
   if (branding?.primaryColor) style['--aichat-primary'] = branding.primaryColor;
+  if (branding?.onPrimaryColor) style['--aichat-on-primary'] = branding.onPrimaryColor;
   return style as CSSProperties;
 }
