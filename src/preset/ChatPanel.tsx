@@ -13,9 +13,6 @@ export interface ChatPresetProps {
   /** Muestra un botón "Copiar" en cada respuesta del asistente (copia el texto al portapapeles).
    *  Pensado para el copiloto del operador en el admin del CRM. Default: false. Ver ADR 0007. */
   enableCopy?: boolean;
-  /** Muestra el botón "Nueva conversación" en el header (ícono de recarga) que reinicia el chat.
-   *  Opt-in: por defecto el botón no se renderiza. Default: false. */
-  enableNewConversation?: boolean;
   /** Muestra el botón de historial en el header (ícono de lista) que abre el menú de
    *  conversaciones: permite abrir una conversación anterior o arrancar una nueva. Requiere
    *  que el backend exponga GET /v1/conversations para el end-user. Opt-in. Default: false.
@@ -48,7 +45,6 @@ export function ChatPanel({
   showActivity = false,
   className,
   enableCopy = false,
-  enableNewConversation = false,
   enableHistory = false,
   onSendToChannel,
   onUseBudget,
@@ -67,7 +63,6 @@ export function ChatPanel({
           labels={resolved}
           showActivity={showActivity}
           enableCopy={enableCopy}
-          enableNewConversation={enableNewConversation}
           enableHistory={enableHistory && !config.conversationId}
           onSendToChannel={onSendToChannel}
           onUseBudget={onUseBudget}
