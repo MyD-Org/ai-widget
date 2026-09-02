@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { AiChatProvider } from '../hooks/AiChatProvider';
 import { resolveLabels } from './labels';
-import { brandingStyle } from './branding';
+import { brandingStyle, themeClass } from './branding';
 import { ChatBody } from './ChatBody';
 import type { ChatPresetProps } from './ChatPanel';
 
-export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableHistory = false, onSendToChannel, onUseBudget, onUseMessage }: ChatPresetProps) {
+export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableHistory = false, theme = 'auto', onSendToChannel, onUseBudget, onUseMessage }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const pos = branding?.launcherPosition ?? 'bottom-right';
   return (
-    <div className={`aichat-root ${className ?? ''}`} style={brandingStyle(branding)}>
+    <div className={`aichat-root ${themeClass(theme)} ${className ?? ''}`} style={brandingStyle(branding)}>
       {open && (
         <div className={`aichat-drawer aichat-drawer-${pos} ${expanded ? 'aichat-drawer-expanded' : ''}`}>
           <AiChatProvider config={config}>

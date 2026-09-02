@@ -1,7 +1,7 @@
 import type { AiChatConfig, BudgetCard } from '../types';
 import { AiChatProvider } from '../hooks/AiChatProvider';
 import { resolveLabels, type Labels } from './labels';
-import { brandingStyle, type Branding } from './branding';
+import { brandingStyle, themeClass, type Branding, type Theme } from './branding';
 import { ChatBody } from './ChatBody';
 
 export interface ChatPresetProps {
@@ -32,6 +32,10 @@ export interface ChatPresetProps {
    *  copiloto del CRM para insertar la sugerencia directamente en el draft del operador; el
    *  label sigue siendo "Copiar" para no romper el reconocimiento visual. Opcional. */
   onUseMessage?: (text: string) => void;
+  /** Tema del widget. 'auto' (default) sigue la preferencia del sistema
+   *  (prefers-color-scheme). Pasá 'light' o 'dark' si tu app tiene su propio switch:
+   *  el usuario puede tener la app en oscuro con el sistema en claro. */
+  theme?: Theme;
   /** 'card' (default): panel flotante con borde/radio/sombra. 'dock': integrado a la vista
    *  (full-height, sin radio ni sombra, solo borde izquierdo) — p.ej. el dock del AI
    *  dashboard builder. */
@@ -49,12 +53,13 @@ export function ChatPanel({
   onSendToChannel,
   onUseBudget,
   onUseMessage,
+  theme = 'auto',
   variant = 'card',
 }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   return (
     <div
-      className={`aichat-root aichat-fill ${variant === 'dock' ? 'aichat-dock' : ''} ${className ?? ''}`}
+      className={`aichat-root aichat-fill ${themeClass(theme)} ${variant === 'dock' ? 'aichat-dock' : ''} ${className ?? ''}`}
       style={brandingStyle(branding)}
     >
       <AiChatProvider config={config}>

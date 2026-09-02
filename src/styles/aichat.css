@@ -20,6 +20,26 @@
   --aichat-whatsapp: #25d366;
   --aichat-border: rgba(22, 22, 26, 0.09);
   --aichat-ring: color-mix(in oklab, var(--aichat-primary) 22%, transparent);
+  /* El acento como TEXTO (links, foco, estados). En claro es el acento tal cual; en
+     oscuro se aclara, porque un acento saturado sobre fondo oscuro no llega a
+     contraste legible. Separarlo del acento-fondo es lo que hace que el tema oscuro
+     no tenga que pisar reglas. */
+  --aichat-primary-text: var(--aichat-primary);
+
+  /* superficies concretas — existen como token para que el tema sea un cambio de
+     variables y no un parche de clases internas desde el host */
+  --aichat-chip: rgba(255, 255, 255, 0.72); /* botones del header */
+  --aichat-menu-bg: rgba(255, 255, 255, 0.97);
+  --aichat-card-bg: rgba(255, 255, 255, 0.94);
+  --aichat-input-bg: rgba(255, 255, 255, 0.9);
+  --aichat-input-inset: inset 0 1px 3px rgba(15, 18, 30, 0.07), 0 1px 0 rgba(255, 255, 255, 0.9);
+  --aichat-row-active-shadow: 0 2px 8px rgba(15, 18, 30, 0.09);
+  --aichat-code-bg: rgba(22, 22, 26, 0.055);
+  --aichat-action-bg: var(--aichat-text); /* acción primaria de las cards */
+  --aichat-action-text: #ffffff;
+  --aichat-error-text: #9f1239;
+  --aichat-error-bg: rgba(255, 241, 242, 0.9);
+  --aichat-error-ring: rgba(159, 18, 57, 0.14);
 
   /* forma */
   --aichat-radius: 26px; /* panel y drawer */
@@ -158,7 +178,7 @@
   height: 32px;
   padding: 0;
   color: var(--aichat-muted);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--aichat-chip);
   border: none;
   border-radius: var(--aichat-radius-chip);
   cursor: pointer;
@@ -167,7 +187,7 @@
 }
 .aichat-new:hover:not(:disabled),
 .aichat-expand:hover:not(:disabled) {
-  color: var(--aichat-primary);
+  color: var(--aichat-primary-text);
   background: var(--aichat-surface-solid);
 }
 .aichat-new:active:not(:disabled),
@@ -181,7 +201,7 @@
 }
 /* botón con su popover abierto */
 .aichat-new-on {
-  color: var(--aichat-primary);
+  color: var(--aichat-primary-text);
   background: var(--aichat-surface-solid);
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--aichat-primary) 30%, transparent);
 }
@@ -249,7 +269,7 @@
   transition: color 0.15s ease, background 0.15s ease;
 }
 .aichat-copy:hover {
-  color: var(--aichat-primary);
+  color: var(--aichat-primary-text);
   background: color-mix(in oklab, var(--aichat-primary) 12%, transparent);
 }
 @keyframes aichat-rise {
@@ -288,22 +308,22 @@
 .aichat-md h3,
 .aichat-md h4 { font-size: 0.9375rem; }
 .aichat-md a {
-  color: var(--aichat-primary);
+  color: var(--aichat-primary-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.aichat-md a:hover { color: color-mix(in oklab, var(--aichat-primary) 75%, #000); }
+.aichat-md a:hover { color: color-mix(in oklab, var(--aichat-primary-text) 78%, var(--aichat-text)); }
 .aichat-md code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.8125rem;
-  background: var(--aichat-elevated);
+  background: var(--aichat-code-bg);
   padding: 0.1em 0.35em;
   border-radius: 6px;
 }
 .aichat-md pre {
   margin: 0.5rem 0;
   padding: 0.7rem 0.85rem;
-  background: rgba(22, 22, 26, 0.055);
+  background: var(--aichat-code-bg);
   border-radius: 14px;
   overflow-x: auto;
 }
@@ -316,7 +336,7 @@
 .aichat-md blockquote {
   margin: 0.5rem 0;
   padding-left: 0.75rem;
-  border-left: 2px solid color-mix(in oklab, var(--aichat-primary) 45%, transparent);
+  border-left: 2px solid color-mix(in oklab, var(--aichat-primary-text) 45%, transparent);
   color: var(--aichat-muted);
 }
 .aichat-table-wrap {
@@ -400,11 +420,11 @@
   padding: 0.625rem 0.875rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #9f1239;
-  background: rgba(255, 241, 242, 0.9);
+  color: var(--aichat-error-text);
+  background: var(--aichat-error-bg);
   border: none;
   border-radius: 14px;
-  box-shadow: inset 0 0 0 1px rgba(159, 18, 57, 0.14);
+  box-shadow: inset 0 0 0 1px var(--aichat-error-ring);
 }
 
 /* form */
@@ -421,7 +441,7 @@
   padding: 0.75rem 1rem;
   border: none;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--aichat-input-bg);
   color: var(--aichat-text);
   font: inherit;
   font-size: 0.875rem;
@@ -434,13 +454,13 @@
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  box-shadow: inset 0 1px 3px rgba(15, 18, 30, 0.07), 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: var(--aichat-input-inset);
   transition: box-shadow 0.15s ease;
 }
 .aichat-input::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .aichat-input::placeholder { color: var(--aichat-muted); }
 .aichat-input:focus {
-  box-shadow: inset 0 1px 3px rgba(15, 18, 30, 0.07), 0 0 0 3px var(--aichat-ring);
+  box-shadow: var(--aichat-input-inset), 0 0 0 3px var(--aichat-ring);
 }
 .aichat-send {
   flex: none;
@@ -522,7 +542,7 @@
   flex: none;
   width: 300px;
   max-width: 100%;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--aichat-card-bg);
   border: none;
   border-radius: var(--aichat-radius-card);
   overflow: hidden;
@@ -601,8 +621,8 @@
 .aichat-action:hover { transform: translateY(-1px); }
 .aichat-action:active { transform: scale(0.98); }
 .aichat-action-primary {
-  background: var(--aichat-text);
-  color: #ffffff;
+  background: var(--aichat-action-bg);
+  color: var(--aichat-action-text);
   box-shadow: 0 10px 20px -10px rgba(15, 18, 30, 0.8);
 }
 .aichat-action-whatsapp {
@@ -626,7 +646,7 @@
   width: 296px;
   max-width: calc(100% - 28px);
   max-height: min(430px, calc(100% - 80px));
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--aichat-menu-bg);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-radius: 22px;
@@ -745,7 +765,7 @@
 .aichat-menu-row:hover { background: var(--aichat-elevated); }
 .aichat-menu-row-active {
   background: var(--aichat-surface-solid);
-  box-shadow: 0 2px 8px rgba(15, 18, 30, 0.09);
+  box-shadow: var(--aichat-row-active-shadow);
 }
 .aichat-menu-row-texts {
   display: flex;
@@ -875,4 +895,118 @@
   .aichat-menu,
   .aichat-action,
   .aichat-menu-new { transition: none; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TEMA OSCURO
+
+   Es puramente un cambio de tokens: ninguna regla de layout cambia. Eso es lo que
+   permite que el host no tenga que pisar clases internas del widget.
+
+   Dos entradas, mismo bloque:
+   - .aichat-dark        → el host lo pidió explícito (prop theme="dark")
+   - .aichat-auto + @media → el host lo dejó en automático y el SISTEMA está en oscuro
+
+   El bloque está duplicado a propósito: CSS no permite aplicar un set de custom
+   properties condicionalmente sin repetirlo. SI TOCÁS UNO, TOCÁ EL OTRO.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.aichat-root.aichat-dark {
+  /* superficies — en oscuro la profundidad no la da la sombra sino la LUZ: cada capa
+     que "sube" es un poco más clara que la de abajo. */
+  --aichat-bg: #0f1014;
+  --aichat-surface: rgba(255, 255, 255, 0.055);
+  --aichat-surface-solid: #191a20;
+  --aichat-elevated: rgba(255, 255, 255, 0.07);
+
+  /* tinta — blanco puro sobre negro puro vibra; bajamos los dos extremos */
+  --aichat-text: #e9e9ec;
+  --aichat-muted: #9a9aa6;
+  --aichat-faint: #6b6b78;
+  --aichat-border: rgba(255, 255, 255, 0.09);
+  --aichat-ring: color-mix(in oklab, var(--aichat-primary) 45%, transparent);
+  /* El acento del tenant sigue sirviendo de FONDO, pero como texto sobre oscuro no
+     llega a contraste legible: para links y foco se usa aclarado. */
+  --aichat-primary-text: color-mix(in oklab, var(--aichat-primary) 62%, white);
+
+  --aichat-chip: rgba(255, 255, 255, 0.06);
+  --aichat-menu-bg: rgba(25, 26, 32, 0.97);
+  --aichat-card-bg: rgba(25, 26, 32, 0.94);
+  --aichat-input-bg: rgba(255, 255, 255, 0.06);
+  --aichat-input-inset: inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.04);
+  --aichat-row-active-shadow: none;
+  --aichat-code-bg: rgba(255, 255, 255, 0.08);
+  /* La acción primaria se invierte: era tinta sobre blanco, pasa a claro sobre oscuro. */
+  --aichat-action-bg: var(--aichat-text);
+  --aichat-action-text: #16161a;
+  --aichat-error-text: #fda4af;
+  --aichat-error-bg: rgba(159, 18, 57, 0.2);
+  --aichat-error-ring: rgba(253, 164, 175, 0.22);
+
+  /* ambiente — los halos bajan de 26%/15% a 16%/9%: sobre oscuro el mismo peso se
+     vuelve una mancha luminosa que se come el contraste del texto. */
+  --aichat-ambient:
+    radial-gradient(520px 300px at 78% -8%, color-mix(in oklab, var(--aichat-primary) 16%, transparent), transparent 70%),
+    radial-gradient(420px 320px at -10% 108%, color-mix(in oklab, var(--aichat-primary) 9%, transparent), transparent 70%);
+
+  /* profundidad — la sombra casi no se lee sobre negro, así que el filo claro de
+     arriba pasa a ser el cue principal de elevación. */
+  --aichat-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --aichat-shadow-2: 0 40px 80px -32px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --aichat-shadow-pop: 0 28px 54px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --aichat-shadow-accent: 0 12px 24px -10px color-mix(in oklab, var(--aichat-primary) 60%, transparent);
+  --aichat-shadow-launcher: 0 18px 34px -12px color-mix(in oklab, var(--aichat-primary) 55%, transparent);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .aichat-root.aichat-auto {
+    /* superficies — en oscuro la profundidad no la da la sombra sino la LUZ: cada capa
+       que "sube" es un poco más clara que la de abajo. */
+    --aichat-bg: #0f1014;
+    --aichat-surface: rgba(255, 255, 255, 0.055);
+    --aichat-surface-solid: #191a20;
+    --aichat-elevated: rgba(255, 255, 255, 0.07);
+
+    /* tinta — blanco puro sobre negro puro vibra; bajamos los dos extremos */
+    --aichat-text: #e9e9ec;
+    --aichat-muted: #9a9aa6;
+    --aichat-faint: #6b6b78;
+    --aichat-border: rgba(255, 255, 255, 0.09);
+    --aichat-ring: color-mix(in oklab, var(--aichat-primary) 45%, transparent);
+    /* El acento del tenant sigue sirviendo de FONDO, pero como texto sobre oscuro no
+       llega a contraste legible: para links y foco se usa aclarado. */
+    --aichat-primary-text: color-mix(in oklab, var(--aichat-primary) 62%, white);
+
+    --aichat-chip: rgba(255, 255, 255, 0.06);
+    --aichat-menu-bg: rgba(25, 26, 32, 0.97);
+    --aichat-card-bg: rgba(25, 26, 32, 0.94);
+    --aichat-input-bg: rgba(255, 255, 255, 0.06);
+    --aichat-input-inset: inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.04);
+    --aichat-row-active-shadow: none;
+    --aichat-code-bg: rgba(255, 255, 255, 0.08);
+    /* La acción primaria se invierte: era tinta sobre blanco, pasa a claro sobre oscuro. */
+    --aichat-action-bg: var(--aichat-text);
+    --aichat-action-text: #16161a;
+    --aichat-error-text: #fda4af;
+    --aichat-error-bg: rgba(159, 18, 57, 0.2);
+    --aichat-error-ring: rgba(253, 164, 175, 0.22);
+
+    /* ambiente — los halos bajan de 26%/15% a 16%/9%: sobre oscuro el mismo peso se
+       vuelve una mancha luminosa que se come el contraste del texto. */
+    --aichat-ambient:
+      radial-gradient(520px 300px at 78% -8%, color-mix(in oklab, var(--aichat-primary) 16%, transparent), transparent 70%),
+      radial-gradient(420px 320px at -10% 108%, color-mix(in oklab, var(--aichat-primary) 9%, transparent), transparent 70%);
+
+    /* profundidad — la sombra casi no se lee sobre negro, así que el filo claro de
+       arriba pasa a ser el cue principal de elevación. */
+    --aichat-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --aichat-shadow-2: 0 40px 80px -32px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --aichat-shadow-pop: 0 28px 54px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    --aichat-shadow-accent: 0 12px 24px -10px color-mix(in oklab, var(--aichat-primary) 60%, transparent);
+    --aichat-shadow-launcher: 0 18px 34px -12px color-mix(in oklab, var(--aichat-primary) 55%, transparent);
+
+    color-scheme: dark;
+  }
 }
