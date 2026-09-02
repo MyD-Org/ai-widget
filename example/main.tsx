@@ -37,6 +37,7 @@ function App() {
   const [profile, setProfile] = useState('');
   const [mode, setMode] = useState<'panel' | 'drawer'>('panel');
   const [showActivity, setShowActivity] = useState(true);
+  const [enableHistory, setEnableHistory] = useState(true);
   const [accent, setAccent] = useState('#1c1917');
   const [mock, setMock] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -122,6 +123,10 @@ function App() {
           <input type="checkbox" checked={showActivity} onChange={(e) => setShowActivity(e.target.checked)} />
           showActivity
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          <input type="checkbox" checked={enableHistory} onChange={(e) => setEnableHistory(e.target.checked)} />
+          enableHistory
+        </label>
         <label
           style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}
           title="Sin red: respuestas canned, no gasta tokens"
@@ -139,13 +144,13 @@ function App() {
 
       {config && mode === 'panel' && (
         <div style={{ height: 560, maxWidth: 480 }}>
-          <ChatPanel key={widgetKey} config={config} showActivity={showActivity} branding={{ title: 'Central Led', primaryColor: accent }} />
+          <ChatPanel key={widgetKey} config={config} showActivity={showActivity} enableHistory={enableHistory} branding={{ title: 'Central Led', primaryColor: accent }} />
         </div>
       )}
       {config && mode === 'drawer' && (
         <>
           <p style={{ color: '#888' }}>El launcher flotante está abajo a la derecha 👉</p>
-          <ChatDrawer key={widgetKey} config={config} showActivity={showActivity} branding={{ title: 'Central Led', primaryColor: accent }} />
+          <ChatDrawer key={widgetKey} config={config} showActivity={showActivity} enableHistory={enableHistory} branding={{ title: 'Central Led', primaryColor: accent }} />
         </>
       )}
     </div>

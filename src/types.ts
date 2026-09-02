@@ -41,6 +41,17 @@ export interface Message {
   card?: Card;
 }
 
+/** Resumen de conversación que devuelve GET /v1/conversations (todas las del end-user en el
+ *  tenant). `title` puede ser null hasta que el backend le ponga uno; el front cae a un
+ *  fallback ("Sin título" o el primer mensaje) para renderizarlo. */
+export interface ConversationSummary {
+  id: string;
+  agent_id: string;
+  title: string | null;
+  status?: string;
+  created_at: string;
+}
+
 export type ChatEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }

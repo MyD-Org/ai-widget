@@ -132,14 +132,47 @@ function sseResponse(canned: Canned): Response {
   return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
 }
 
+// Historial simulado: fechas relativas a hoy para que caigan en los tres grupos del menú.
+const daysAgo = (n: number, hour = 10) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  d.setHours(hour, n === 0 ? 42 : 15, 0, 0);
+  return d.toISOString();
+};
+
+const MOCK_CONVERSATIONS = [
+  { id: 'mock-conv', agent_id: 'mock', title: 'Paneles LED para el living', created_at: daysAgo(0) },
+  { id: 'mock-conv-2', agent_id: 'mock', title: 'Stock de spots embutidos', created_at: daysAgo(0, 9) },
+  { id: 'mock-conv-3', agent_id: 'mock', title: 'Cambio de fecha de entrega', created_at: daysAgo(2, 17) },
+  { id: 'mock-conv-4', agent_id: 'mock', title: null, created_at: daysAgo(12) },
+  { id: 'mock-conv-5', agent_id: 'mock', title: 'Presupuesto salón Cataratas', created_at: daysAgo(21) },
+];
+
+const MOCK_HISTORY: Record<string, { id: string; role: 'user' | 'assistant'; text: string }[]> = {
+  'mock-conv-2': [
+    { id: 'h1', role: 'user', text: '¿Quedan spots embutidos de 7W?' },
+    { id: 'h2', role: 'assistant', text: 'Quedan **38 unidades** en depósito central.' },
+  ],
+  'mock-conv-3': [
+    { id: 'h3', role: 'user', text: 'Pasar la entrega del pedido 4821 al viernes' },
+    { id: 'h4', role: 'assistant', text: 'Listo, reprogramada para el viernes.' },
+  ],
+};
+
 export function createMockFetch(): typeof fetch {
-  return (async (input: RequestInfo | URL) => {
+  return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input.toString();
+    const method = (init?.method ?? 'GET').toUpperCase();
     if (url.endsWith('/demo/session')) return json({ token: 'mock-token', expires_at: null }, 201);
     if (url.endsWith('/demo/agents')) return json(MOCK_AGENTS);
     if (url.endsWith('/demo/profiles')) return json(MOCK_PROFILES);
-    if (/\/v1\/conversations$/.test(url)) return json({ id: 'mock-conv' }, 201);
-    if (/\/v1\/conversations\/.+\/messages$/.test(url)) {
+    if (/\/v1\/conversations$/.test(url)) {
+      // Mismo path para crear (POST) y listar (GET): el método es lo que las separa.
+      return method === 'POST' ? json({ id: 'mock-conv' }, 201) : json(MOCK_CONVERSATIONS);
+    }
+    const messages = url.match(/\/v1\/conversations\/(.+)\/messages$/);
+    if (messages) {
+      if (method !== 'POST') return json(MOCK_HISTORY[messages[1]] ?? []);
       const canned = CANNED[turn % CANNED.length];
       turn += 1;
       return sseResponse(canned);

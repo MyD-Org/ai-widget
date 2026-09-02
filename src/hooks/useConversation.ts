@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, type Message } from '../types';
+import { ApiError, type ConversationSummary, type Message } from '../types';
 import { useAiChatContext } from './AiChatProvider';
 
 export type Status = 'idle' | 'streaming' | 'error';
+/** Estado de la carga del listado del historial (GET /v1/conversations), independiente del
+ *  `Status` del streaming: el listado puede estar fallando con el chat andando bien. */
+export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 export interface Activity {
   tool: string;
 }
@@ -15,6 +18,16 @@ export interface UseConversation {
   send: (text: string) => void;
   retry: () => void;
   reset: () => void;
+  /** Id de la conversación abierta, o null mientras todavía no se creó ninguna (el backend
+   *  la crea recién con el primer mensaje). Lo usa el historial para marcar la fila activa. */
+  currentId: string | null;
+  conversations: ConversationSummary[];
+  conversationsStatus: HistoryStatus;
+  /** Trae el listado del historial. Se llama al abrir el menú (y al reintentar tras un
+   *  error), no en el mount: si el usuario nunca abre el historial no gastamos el request. */
+  loadConversations: () => void;
+  /** Abre una conversación existente: cambia el id activo y carga su historial de mensajes. */
+  openConversation: (id: string) => void;
 }
 
 const storageKey = (agentId: string) => `aichat:conv:${agentId}`;
@@ -29,6 +42,11 @@ export function useConversation(): UseConversation {
   const [error, setError] = useState<{ code: string } | null>(null);
   const convIdRef = useRef<string | null>(null);
   const lastSentRef = useRef<string | null>(null);
+  // Espejo en estado del id de convIdRef: el ref maneja el flujo del streaming (sin re-render),
+  // pero el historial necesita re-renderizar para marcar la fila activa.
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [conversationsStatus, setConversationsStatus] = useState<HistoryStatus>('idle');
 
   // Con conversationId pre-creado (copiloto del operador, ADR 0007) el host dicta el id, así que
   // no persistimos en sessionStorage por agentId (evita pisar un contacto con otro). Default 'none'.
@@ -45,6 +63,7 @@ export function useConversation(): UseConversation {
     if (loadedFor.current === preCreatedId) return;
     loadedFor.current = preCreatedId;
     convIdRef.current = preCreatedId;
+    setCurrentId(preCreatedId);
     client.listMessages(preCreatedId).then(setMessages).catch(() => setMessages([]));
   }, [preCreatedId, session.ready, client]);
 
@@ -54,12 +73,14 @@ export function useConversation(): UseConversation {
     const saved = sessionStorage.getItem(storageKey(config.agentId));
     if (!saved || convIdRef.current) return;
     convIdRef.current = saved;
+    setCurrentId(saved);
     client
       .listMessages(saved)
       .then(setMessages)
       .catch(() => {
         sessionStorage.removeItem(storageKey(config.agentId));
         convIdRef.current = null;
+        setCurrentId(null);
       });
   }, [preCreatedId, persist, session.ready, config.agentId, client]);
 
@@ -68,10 +89,12 @@ export function useConversation(): UseConversation {
     // Con conversationId pre-creado nunca se crea una conversación nueva.
     if (preCreatedId) {
       convIdRef.current = preCreatedId;
+      setCurrentId(preCreatedId);
       return preCreatedId;
     }
     const { id } = await client.createConversation();
     convIdRef.current = id;
+    setCurrentId(id);
     if (persist) sessionStorage.setItem(storageKey(config.agentId), id);
     return id;
   }, [client, persist, config.agentId, preCreatedId]);
@@ -165,6 +188,7 @@ export function useConversation(): UseConversation {
   const reset = useCallback(() => {
     convIdRef.current = null;
     lastSentRef.current = null;
+    setCurrentId(null);
     if (persist) sessionStorage.removeItem(storageKey(config.agentId));
     setMessages([]);
     setStatus('idle');
@@ -172,5 +196,49 @@ export function useConversation(): UseConversation {
     setError(null);
   }, [persist, config.agentId]);
 
-  return { messages, status, activity, error, send, retry, reset };
+  const loadConversations = useCallback(() => {
+    if (!session.ready) return;
+    setConversationsStatus('loading');
+    client
+      .listConversations()
+      .then((list) => {
+        setConversations(list);
+        setConversationsStatus('ready');
+      })
+      .catch(() => setConversationsStatus('error'));
+  }, [client, session.ready]);
+
+  const openConversation = useCallback(
+    (id: string) => {
+      if (id === convIdRef.current) return;
+      convIdRef.current = id;
+      lastSentRef.current = null;
+      setCurrentId(id);
+      if (persist) sessionStorage.setItem(storageKey(config.agentId), id);
+      setMessages([]);
+      setStatus('idle');
+      setActivity(null);
+      setError(null);
+      client
+        .listMessages(id)
+        .then(setMessages)
+        .catch(() => setError({ code: 'not_found' }));
+    },
+    [client, persist, config.agentId],
+  );
+
+  return {
+    messages,
+    status,
+    activity,
+    error,
+    send,
+    retry,
+    reset,
+    currentId,
+    conversations,
+    conversationsStatus,
+    loadConversations,
+    openConversation,
+  };
 }
