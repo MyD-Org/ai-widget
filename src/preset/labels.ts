@@ -57,7 +57,7 @@ export const defaultLabels: Labels = {
   launcherAria: 'Abrir chat',
   errorAuth: 'Tu sesión expiró. Recargá la página.',
   errorRateLimit: 'Demasiados mensajes. Probá en un momento.',
-  errorNoCredits: 'El asistente no tiene créditos disponibles por el momento.',
+  errorNoCredits: 'No contás con créditos disponibles.',
   errorGeneric: 'Hubo un problema. Intentá de nuevo.',
   copyLabel: 'Copiar',
   copiedLabel: 'Copiado',
