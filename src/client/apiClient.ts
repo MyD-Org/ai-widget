@@ -11,21 +11,34 @@ function codeForStatus(status: number): string {
   return 'http_error';
 }
 
-// 503 es el único status donde ai-api manda un motivo específico en el body ({error:
-// '...'}) en vez de dejar que el status alcance (401/404/429 ya son inambiguos por sí
-// solos). Clonamos por las dudas: si esto no es JSON válido, dejamos el body original
-// intacto para quien llame después. Si falla el parseo, cae a 'http_error'.
-async function readErrorCode(res: Response): Promise<string> {
+// 503 y 401 mandan un motivo específico en el body ({error: '...'}); 404 y 429 se
+// explican solos con el status. Clonamos por las dudas: si esto no es JSON válido,
+// dejamos el body original intacto para quien llame después.
+async function readErrorCode(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.clone().json()) as { error?: string; code?: string };
-    return body?.code ?? body?.error ?? 'http_error';
+    return body?.code ?? body?.error ?? fallback;
   } catch {
-    return 'http_error';
+    return fallback;
   }
 }
 
+// Un 401 tiene DOS causas que se resuelven distinto, y aplanarlas mandaba a la persona
+// equivocada: si el token de sesión venció, recargar la página lo arregla; si la API key
+// del host es inválida, recargar no cambia nada y hay que revisar la configuración.
+// ai-api ya las distingue en el body — era el widget el que las juntaba.
+const AUTH_CODES = new Set(['missing_session_token', 'invalid_session_token']);
+const CONFIG_CODES = new Set(['missing_api_key', 'invalid_api_key']);
+
 async function errorCodeFor(res: Response): Promise<string> {
-  return res.status === 503 ? readErrorCode(res) : codeForStatus(res.status);
+  if (res.status === 503) return readErrorCode(res, 'http_error');
+  if (res.status === 401) {
+    const reason = await readErrorCode(res, 'auth');
+    if (CONFIG_CODES.has(reason)) return 'config';
+    if (AUTH_CODES.has(reason)) return 'auth';
+    return 'auth'; // motivo desconocido: la sesión sigue siendo la causa más probable
+  }
+  return codeForStatus(res.status);
 }
 
 export function toChatEvent(raw: RawSseEvent): ChatEvent | null {

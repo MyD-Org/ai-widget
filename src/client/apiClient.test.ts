@@ -39,11 +39,39 @@ describe('createApiClient', () => {
     expect(JSON.parse(init.body)).toEqual({ agent_id: 'agent-1' });
   });
 
+  // Un 401 sin cuerpo legible: la sesión vencida es la causa más probable, y recargar
+  // es el consejo correcto.
   it('maps HTTP 401 to ApiError code "auth"', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 401 }));
     const client = createApiClient(cfg, () => 'jwt', fetchMock);
     await expect(client.createConversation()).rejects.toMatchObject({ status: 401, code: 'auth' });
     expect((await client.createConversation().catch((e) => e))).toBeInstanceOf(ApiError);
+  });
+
+  it('un 401 por token de sesión sigue siendo "auth"', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'invalid_session_token' }), { status: 401 }),
+    );
+    const client = createApiClient(cfg, () => 'jwt', fetchMock);
+    await expect(client.createConversation()).rejects.toMatchObject({ status: 401, code: 'auth' });
+  });
+
+  // La distinción que importa: con una API key inválida, recargar la página no arregla
+  // nada. Decirle "tu sesión expiró" manda a la persona a buscar donde no es.
+  it('un 401 por API key inválida es "config", no "auth"', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'invalid_api_key' }), { status: 401 }),
+    );
+    const client = createApiClient(cfg, () => 'jwt', fetchMock);
+    await expect(client.createConversation()).rejects.toMatchObject({ status: 401, code: 'config' });
+  });
+
+  it('un 401 por API key ausente también es "config"', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'missing_api_key' }), { status: 401 }),
+    );
+    const client = createApiClient(cfg, () => 'jwt', fetchMock);
+    await expect(client.createConversation()).rejects.toMatchObject({ status: 401, code: 'config' });
   });
 
   it('maps HTTP 429 to ApiError code "rate_limit"', async () => {
