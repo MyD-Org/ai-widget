@@ -10,6 +10,9 @@ export interface Labels {
   launcherAria: string;
   errorAuth: string;
   errorRateLimit: string;
+  /** code:'no_credits' — la cuenta de Anthropic del tenant se quedó sin saldo. Distinto
+   *  de errorGeneric porque reintentar no lo arregla: hace falta cargar crédito. */
+  errorNoCredits: string;
   errorGeneric: string;
   copyLabel: string;
   copiedLabel: string;
@@ -52,6 +55,7 @@ export const defaultLabels: Labels = {
   launcherAria: 'Abrir chat',
   errorAuth: 'Tu sesión expiró. Recargá la página.',
   errorRateLimit: 'Demasiados mensajes. Probá en un momento.',
+  errorNoCredits: 'El asistente no tiene créditos disponibles por el momento.',
   errorGeneric: 'Hubo un problema. Intentá de nuevo.',
   copyLabel: 'Copiar',
   copiedLabel: 'Copiado',
@@ -78,5 +82,6 @@ export function resolveLabels(overrides?: Partial<Labels>): Labels {
 export function labelForError(code: string | undefined, labels: Labels): string {
   if (code === 'auth') return labels.errorAuth;
   if (code === 'rate_limit') return labels.errorRateLimit;
+  if (code === 'no_credits') return labels.errorNoCredits;
   return labels.errorGeneric;
 }
