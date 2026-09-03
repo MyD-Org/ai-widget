@@ -1,6 +1,6 @@
 {
   "name": "@myd-org/ai-widget",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Embeddable React chat widget for ai-api",
   "license": "UNLICENSED",
   "repository": {
