@@ -9,6 +9,8 @@ export interface Labels {
   collapse: string;
   launcherAria: string;
   errorAuth: string;
+  /** API key del host inválida o ausente: recargar NO lo arregla, es configuración. */
+  errorConfig: string;
   errorRateLimit: string;
   /** code:'no_credits' (billing_error real de Anthropic) O code:'agent_disabled' (el agente
    *  existe pero su status es 'disabled' — demos/pilotos sin habilitar todavía). Mismo
@@ -56,6 +58,7 @@ export const defaultLabels: Labels = {
   collapse: 'Contraer',
   launcherAria: 'Abrir chat',
   errorAuth: 'Tu sesión expiró. Recargá la página.',
+  errorConfig: 'El chat no está configurado correctamente. Avisale al equipo del sitio.',
   errorRateLimit: 'Demasiados mensajes. Probá en un momento.',
   errorNoCredits: 'No contás con créditos disponibles.',
   errorGeneric: 'Hubo un problema. Intentá de nuevo.',
@@ -83,6 +86,7 @@ export function resolveLabels(overrides?: Partial<Labels>): Labels {
 
 export function labelForError(code: string | undefined, labels: Labels): string {
   if (code === 'auth') return labels.errorAuth;
+  if (code === 'config') return labels.errorConfig;
   if (code === 'rate_limit') return labels.errorRateLimit;
   if (code === 'no_credits' || code === 'agent_disabled') return labels.errorNoCredits;
   return labels.errorGeneric;
