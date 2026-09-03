@@ -10,8 +10,10 @@ export interface Labels {
   launcherAria: string;
   errorAuth: string;
   errorRateLimit: string;
-  /** code:'no_credits' — la cuenta de Anthropic del tenant se quedó sin saldo. Distinto
-   *  de errorGeneric porque reintentar no lo arregla: hace falta cargar crédito. */
+  /** code:'no_credits' (billing_error real de Anthropic) O code:'agent_disabled' (el agente
+   *  existe pero su status es 'disabled' — demos/pilotos sin habilitar todavía). Mismo
+   *  mensaje para las dos: al usuario no le importa cuál de las dos es, y ninguna se
+   *  arregla reintentando. */
   errorNoCredits: string;
   errorGeneric: string;
   copyLabel: string;
@@ -82,6 +84,6 @@ export function resolveLabels(overrides?: Partial<Labels>): Labels {
 export function labelForError(code: string | undefined, labels: Labels): string {
   if (code === 'auth') return labels.errorAuth;
   if (code === 'rate_limit') return labels.errorRateLimit;
-  if (code === 'no_credits') return labels.errorNoCredits;
+  if (code === 'no_credits' || code === 'agent_disabled') return labels.errorNoCredits;
   return labels.errorGeneric;
 }

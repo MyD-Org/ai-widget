@@ -11,6 +11,23 @@ function codeForStatus(status: number): string {
   return 'http_error';
 }
 
+// 503 es el único status donde ai-api manda un motivo específico en el body ({error:
+// '...'}) en vez de dejar que el status alcance (401/404/429 ya son inambiguos por sí
+// solos). Clonamos por las dudas: si esto no es JSON válido, dejamos el body original
+// intacto para quien llame después. Si falla el parseo, cae a 'http_error'.
+async function readErrorCode(res: Response): Promise<string> {
+  try {
+    const body = (await res.clone().json()) as { error?: string; code?: string };
+    return body?.code ?? body?.error ?? 'http_error';
+  } catch {
+    return 'http_error';
+  }
+}
+
+async function errorCodeFor(res: Response): Promise<string> {
+  return res.status === 503 ? readErrorCode(res) : codeForStatus(res.status);
+}
+
 export function toChatEvent(raw: RawSseEvent): ChatEvent | null {
   let data: Record<string, unknown> = {};
   try {
@@ -53,7 +70,7 @@ export function createApiClient(config: AiChatConfig, getToken: TokenGetter, fet
 
   async function ensureOk(res: Response): Promise<Response> {
     if (res.ok) return res;
-    throw new ApiError(res.status, codeForStatus(res.status));
+    throw new ApiError(res.status, await errorCodeFor(res));
   }
 
   return {
@@ -91,7 +108,7 @@ export function createApiClient(config: AiChatConfig, getToken: TokenGetter, fet
         body: JSON.stringify({ content, ...(pageContext !== undefined ? { page_context: pageContext } : {}) }),
         signal,
       });
-      if (!res.ok) throw new ApiError(res.status, codeForStatus(res.status));
+      if (!res.ok) throw new ApiError(res.status, await errorCodeFor(res));
       if (!res.body) throw new ApiError(0, 'no_stream');
       for await (const raw of parseSse(res.body, signal)) {
         const ev = toChatEvent(raw);

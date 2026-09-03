@@ -86,7 +86,7 @@ export interface AiChatConfig {
   onEvent?: (name: string, payload: unknown) => void;
 }
 
-export type ErrorCode = 'auth' | 'not_found' | 'rate_limit' | 'no_credits' | string;
+export type ErrorCode = 'auth' | 'not_found' | 'rate_limit' | 'no_credits' | 'agent_disabled' | string;
 
 export class ApiError extends Error {
   constructor(public status: number, public code: ErrorCode, message?: string) {
