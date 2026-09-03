@@ -85,8 +85,10 @@ export function createApiClient(config: AiChatConfig, getToken: TokenGetter, fet
       return res.json() as Promise<{ id: string }>;
     },
     async listConversations(): Promise<ConversationSummary[]> {
+      // ?agent_id= (soportado desde ai-api): cada widget lista SOLO sus conversaciones.
+      // Sin el filtro el historial mezclaba las de todos los agentes del tenant.
       const res = await ensureOk(
-        await fetchImpl(`${config.baseUrl}/v1/conversations`, {
+        await fetchImpl(`${config.baseUrl}/v1/conversations?agent_id=${encodeURIComponent(config.agentId)}`, {
           headers: authHeaders(),
         }),
       );

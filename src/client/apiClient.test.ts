@@ -59,6 +59,13 @@ describe('createApiClient', () => {
     expect(await client.listMessages('conv-1')).toEqual(history);
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.test/v1/conversations/conv-1/messages');
   });
+
+  it('listConversations filtra por agentId del config', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('[]', { status: 200 }));
+    const client = createApiClient(cfg, () => 'jwt', fetchMock);
+    await client.listConversations();
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.test/v1/conversations?agent_id=agent-1');
+  });
 });
 
 describe('eventos custom + page_context + kind (dashboard builder)', () => {

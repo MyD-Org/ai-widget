@@ -39,8 +39,8 @@ describe('menú de conversaciones', () => {
     await userEvent.click(screen.getByText('Presupuesto techo Belgrano'));
 
     expect(await screen.findByText('necesito 40 m²')).toBeInTheDocument();
-    // El listado es un GET a /v1/conversations y recién después se piden los mensajes del hilo.
-    expect(fetchMock.mock.calls[0][0]).toBe('https://api.test/v1/conversations');
+    // El listado es un GET a /v1/conversations filtrado por agente y recién después se piden los mensajes del hilo.
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.test/v1/conversations?agent_id=a');
     expect(fetchMock.mock.calls[1][0]).toBe('https://api.test/v1/conversations/c1/messages');
   });
 
