@@ -25,7 +25,8 @@ describe('card products', () => {
     render(<Card card={products} />);
     expect(screen.getByText('Opciones para exterior')).toBeInTheDocument();
     expect(screen.getByText('Reflector LED 50W IP65 luz fría')).toBeInTheDocument();
-    expect(screen.getByText('Apto intemperie')).toBeInTheDocument();
+    // El motivo del agente ya no se dibuja: la card es la del catálogo.
+    expect(screen.queryByText('Apto intemperie')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByText(/\$/)).toBeNull();
   });
@@ -36,10 +37,12 @@ describe('card products', () => {
     expect(await screen.findByText('Reflector LED 50W Macroled')).toBeInTheDocument();
     expect(resolveProducts).toHaveBeenCalledWith(['1101', '1102']);
     expect(screen.getByText('Macroled')).toBeInTheDocument();
-    expect(screen.getByText('$25.990')).toBeInTheDocument();
-    expect(screen.getByText('$41.500')).toBeInTheDocument();
+    expect(screen.getByText('$ 25.990')).toBeInTheDocument();
+    expect(screen.getByText('$ 41.500')).toBeInTheDocument();
     expect(screen.getByText('No disponible')).toBeInTheDocument();
-    const img = screen.getByRole('img', { name: 'Reflector LED 50W Macroled' });
+    // Decorativa: el nombre ya está en la card.
+    const img = document.querySelector('img') as HTMLImageElement;
+    expect(img).toHaveAttribute('alt', '');
     expect(img).toHaveAttribute('src', 'https://img.test/1101.jpg');
     expect(img).toHaveAttribute('loading', 'lazy');
   });
@@ -60,7 +63,7 @@ describe('card products', () => {
     await act(async () => {});
     expect(screen.getByText('Reflector LED 50W IP65 luz fría')).toBeInTheDocument();
     expect(screen.queryByText(/\$/)).toBeNull();
-    expect(screen.queryByRole('img')).toBeNull();
+    expect(document.querySelector('img')).toBeNull();
   });
 
   it('un id que el host no devuelve cae al label; precio 0 o no finito no se muestra', async () => {
@@ -75,7 +78,7 @@ describe('card products', () => {
     const resolveProducts = vi.fn().mockResolvedValue([{ id: '1101', name: 'X', imageUrl: 'javascript:alert(1)' }]);
     render(<Card card={products} commerce={{ resolveProducts }} />);
     await screen.findByText('X');
-    expect(screen.queryByRole('img')).toBeNull();
+    expect(document.querySelector('img')).toBeNull();
   });
 
   it('Agregar manda [{id, qty:1}] y la fila pasa a "Agregado"; disabled si no está disponible', async () => {
@@ -108,12 +111,69 @@ describe('card products', () => {
     for (const b of screen.getAllByRole('button', { name: 'Agregar' })) expect(b).toBeEnabled();
   });
 
-  it('Ver solo con onOpenProduct, y recibe el id', async () => {
+  it('la card abre la ficha solo con onOpenProduct (el nombre es el enlace estirado) y no hay botón Ver', async () => {
     const onOpenProduct = vi.fn();
+    const { unmount } = render(<Card card={products} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    unmount();
     render(<Card card={products} commerce={{ onOpenProduct }} />);
     expect(screen.queryByRole('button', { name: 'Agregar' })).toBeNull();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Ver' })[1]);
+    expect(screen.queryByRole('button', { name: 'Ver' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Reflector LED 100W IP66' }));
     expect(onOpenProduct).toHaveBeenCalledWith('1102');
+  });
+
+  describe('contador de cantidad (como el catálogo)', () => {
+    const one: ProductsCard = { type: 'products', items: [{ id: 'a', label: 'Reflector A' }] };
+    const res = (o: Partial<ResolvedProduct> = {}) =>
+      vi.fn().mockResolvedValue([{ id: 'a', name: 'Reflector A', price: 1244.07, available: true, sku: 'BT-55', ...o }]);
+
+    it('muestra el código y los centavos en superíndice', async () => {
+      render(<Card card={one} commerce={{ resolveProducts: res() }} />);
+      expect(await screen.findByText('Cód. BT-55')).toBeInTheDocument();
+      const price = screen.getByText(/\$ 1\.244/);
+      expect(price.querySelector('sup')).toHaveTextContent('07');
+    });
+
+    it('con el producto en el carrito, "Agregar" pasa al contador; con 1, el "−" quita', async () => {
+      const onSetQuantity = vi.fn();
+      const commerce = { resolveProducts: res(), onAddProducts: vi.fn(), onSetQuantity, cartQuantities: { a: 1 } };
+      render(<Card card={one} commerce={commerce} />);
+      await screen.findByText('Reflector A');
+      expect(screen.queryByRole('button', { name: 'Agregar' })).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Quitar del carrito' }));
+      expect(onSetQuantity).toHaveBeenCalledWith('a', 0);
+      await userEvent.click(screen.getByRole('button', { name: 'Agregar uno más' }));
+      expect(onSetQuantity).toHaveBeenCalledWith('a', 2);
+    });
+
+    it('con 3 unidades el "−" resta uno, y el "+" no pasa de maxQuantity', async () => {
+      const onSetQuantity = vi.fn();
+      const commerce = { resolveProducts: res({ maxQuantity: 3 }), onAddProducts: vi.fn(), onSetQuantity, cartQuantities: { a: 3 } };
+      render(<Card card={one} commerce={commerce} />);
+      await screen.findByText('Reflector A');
+      expect(screen.getByRole('button', { name: 'Agregar uno más' })).toBeDisabled();
+      await userEvent.click(screen.getByRole('button', { name: 'Quitar uno' }));
+      expect(onSetQuantity).toHaveBeenCalledWith('a', 2);
+    });
+
+    it('sin cartQuantities/onSetQuantity se comporta como antes: Agregar y queda en "Agregado"', async () => {
+      const onAddProducts = vi.fn();
+      render(<Card card={one} commerce={{ resolveProducts: res(), onAddProducts }} />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Agregar' }));
+      expect(onAddProducts).toHaveBeenCalledWith([{ id: 'a', qty: 1 }]);
+      expect(screen.getByRole('button', { name: 'Agregado' })).toBeDisabled();
+    });
+
+    it('con carrito informado, tras agregar el botón no queda en "Agregado" (lo reemplaza el contador)', async () => {
+      const onAddProducts = vi.fn();
+      const commerce = { resolveProducts: res(), onAddProducts, onSetQuantity: vi.fn(), cartQuantities: {} as Record<string, number> };
+      const { rerender } = render(<Card card={one} commerce={commerce} />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Agregar' }));
+      rerender(<Card card={one} commerce={{ ...commerce, cartQuantities: { a: 1 } }} />);
+      expect(screen.getByRole('group')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Agregado' })).toBeNull();
+    });
   });
 });
 

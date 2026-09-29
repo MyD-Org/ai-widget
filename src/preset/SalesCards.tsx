@@ -11,6 +11,7 @@ import type {
 import type { Labels } from './labels';
 import { formatArs } from './budgetSerializer';
 import { ProductCarousel } from './ProductCarousel';
+import { CartIcon, ProductPrice, QuantityStepper } from './ProductParts';
 
 type ResolveFn = CommerceCallbacks['resolveProducts'];
 
@@ -122,10 +123,15 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
     commerce?.resolveProducts,
   );
   const uid = useId();
-  // "Agregado" es por producto: agregar uno no debe marcar los demás.
+  // "Agregado" es por producto: agregar uno no debe marcar los demás. Solo aplica cuando el host
+  // no informa el carrito (`cartQuantities`): con carrito, el botón pasa al contador.
   const [added, setAdded] = useState<Set<number>>(() => new Set());
+  // Solo se anima la aparición del contador cuando la provoca un clic acá.
+  const [justAdded, setJustAdded] = useState<Set<number>>(() => new Set());
   const onAdd = commerce?.onAddProducts;
   const onOpen = commerce?.onOpenProduct;
+  const onSetQuantity = commerce?.onSetQuantity;
+  const cartQuantities = commerce?.cartQuantities;
 
   const cards = card.items.map((item, i) => {
     const p = products.get(item.id);
@@ -137,43 +143,60 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
     const unavailable = p?.available === false || (complete && !p);
     const stock = unavailable ? undefined : stockNote(p?.stock, labels);
     const isAdded = added.has(i);
+    const inCart = cartQuantities?.[item.id] ?? 0;
+    const showStepper = Boolean(onSetQuantity) && inCart > 0;
+    const maxQty = typeof p?.maxQuantity === 'number' ? p.maxQuantity : typeof p?.stock === 'number' ? p.stock : undefined;
     const nameId = `${uid}-name-${i}`;
     return (
-      <article key={i} className="aichat-product">
+      <article key={i} className="aichat-product" data-clickable={onOpen ? '' : undefined}>
         <div className="aichat-product-media">
-          {img && <img className="aichat-product-img" src={img} alt={name} loading="lazy" />}
+          {img && <img className="aichat-product-img" src={img} alt="" loading="lazy" />}
         </div>
         <div className="aichat-product-body">
           {p?.brand && <span className="aichat-product-brand">{p.brand}</span>}
-          <span id={nameId} className="aichat-product-name">{name}</span>
-          {item.reason && <span className="aichat-product-reason">{item.reason}</span>}
-          {price != null && <span className="aichat-product-price">{formatArs(price)}</span>}
-          {stock && <span className="aichat-stock-low">{stock}</span>}
+          {/* Enlace estirado: el nombre cubre toda la card (::after) y el botón de cantidad queda por
+              encima. Es un botón porque la ficha la abre el host (onOpenProduct), no una URL. */}
+          {onOpen ? (
+            <button type="button" id={nameId} className="aichat-product-name aichat-product-open" onClick={() => onOpen(item.id)}>
+              {name}
+            </button>
+          ) : (
+            <span id={nameId} className="aichat-product-name">{name}</span>
+          )}
+          {p?.sku && <span className="aichat-product-code">{labels.codeLabel} {p.sku}</span>}
+          {(price != null || stock) && (
+            <div className="aichat-product-priceline">
+              {price != null && <ProductPrice value={price} />}
+              {stock && <span className="aichat-stock-low">{stock}</span>}
+            </div>
+          )}
           {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
-          {(onAdd || onOpen) && (
+          {onAdd && (
             <div className="aichat-product-actions">
-              {onAdd && (
+              {showStepper ? (
+                <QuantityStepper
+                  qty={inCart}
+                  max={maxQty}
+                  disabled={unavailable}
+                  animate={justAdded.has(i)}
+                  labels={labels}
+                  describedBy={nameId}
+                  onChange={(n) => onSetQuantity?.(item.id, Math.max(0, n))}
+                />
+              ) : (
                 <button
                   type="button"
-                  className="aichat-mini aichat-mini-primary"
+                  className="aichat-add"
                   aria-describedby={nameId}
-                  disabled={unavailable || isAdded}
+                  disabled={unavailable || (!cartQuantities && isAdded)}
                   onClick={() => {
                     onAdd([{ id: item.id, qty: 1 }]);
                     setAdded((s) => new Set(s).add(i));
+                    setJustAdded((s) => new Set(s).add(i));
                   }}
                 >
-                  {isAdded ? labels.addedLabel : labels.addLabel}
-                </button>
-              )}
-              {onOpen && (
-                <button
-                  type="button"
-                  className="aichat-mini"
-                  aria-describedby={nameId}
-                  onClick={() => onOpen(item.id)}
-                >
-                  {labels.viewProductLabel}
+                  <CartIcon />
+                  {!cartQuantities && isAdded ? labels.addedLabel : labels.addLabel}
                 </button>
               )}
             </div>
