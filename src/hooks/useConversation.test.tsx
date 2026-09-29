@@ -118,7 +118,7 @@ describe('useConversation', () => {
       result.current.send('dos');
     });
     await waitFor(() => expect(result.current.status).toBe('idle'));
-    const cards = result.current.messages.filter((m) => m.role === 'assistant').map((m) => m.card?.title);
+    const cards = result.current.messages.filter((m) => m.role === 'assistant').map((m) => (m.card?.type === 'budget' ? m.card.title : undefined));
     expect(cards).toEqual(['A', 'B']);
   });
 

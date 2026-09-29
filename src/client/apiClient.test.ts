@@ -80,6 +80,26 @@ describe('createApiClient', () => {
     await expect(client.createConversation()).rejects.toMatchObject({ status: 429, code: 'rate_limit' });
   });
 
+  // Los topes por end_user (y los del tenant) llegan en el body del 429 antes del SSE: el code
+  // tiene que pasar tal cual para que labelForError los mapee.
+  it('un 429 con motivo en el body pasa el motivo (messages_per_day_user)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'messages_per_day_user' }), { status: 429 }),
+    );
+    const client = createApiClient(cfg, () => 'jwt', fetchMock);
+    const gen = client.streamMessage('c1', 'hola');
+    await expect(gen.next()).rejects.toMatchObject({ status: 429, code: 'messages_per_day_user' });
+  });
+
+  it('un 413 es siempre message_too_long (aunque el body traiga otro code)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 'FST_ERR_CTP_BODY_TOO_LARGE', error: 'Payload Too Large' }), { status: 413 }),
+    );
+    const client = createApiClient(cfg, () => 'jwt', fetchMock);
+    const gen = client.streamMessage('c1', 'x'.repeat(5000));
+    await expect(gen.next()).rejects.toMatchObject({ status: 413, code: 'message_too_long' });
+  });
+
   it('listMessages GETs the history', async () => {
     const history = [{ id: 'm1', role: 'user', text: 'hola', created_at: 't' }];
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(history), { status: 200 }));

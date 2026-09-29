@@ -1,0 +1,8 @@
+{
+  "type": "products",
+  "title": "Opciones para exterior",
+  "items": [
+    { "id": "1101", "label": "Reflector LED 50W IP65 luz fría", "reason": "Apto intemperie" },
+    { "id": "1102", "label": "Reflector LED 100W IP66", "reason": "Más potencia para patios grandes" }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { AiChatConfig, BudgetCard } from '../types';
+import type { AiChatConfig, BudgetCard, CommerceCallbacks } from '../types';
 import { AiChatProvider } from '../hooks/AiChatProvider';
 import { resolveLabels, type Labels } from './labels';
 import { brandingStyle, themeClass, type Branding, type Theme } from './branding';
@@ -32,6 +32,11 @@ export interface ChatPresetProps {
    *  copiloto del CRM para insertar la sugerencia directamente en el draft del operador; el
    *  label sigue siendo "Copiar" para no romper el reconocimiento visual. Opcional. */
   onUseMessage?: (text: string) => void;
+  /** Acciones de comercio del host para las cards de venta (products, cart, handoff) del
+   *  agente vendedor. Todas opt-in (ADR 0008): sin `onAddProducts` no hay "Agregar", sin
+   *  `onOpenProduct` no hay "Ver"; sin `resolveProducts` las cards muestran el label del modelo
+   *  sin precio ni foto. Contrato: platform/contracts/sales-cards/v1. Opcional. */
+  commerce?: CommerceCallbacks;
   /** Tema del widget. 'auto' (default) sigue la preferencia del sistema
    *  (prefers-color-scheme). Pasá 'light' o 'dark' si tu app tiene su propio switch:
    *  el usuario puede tener la app en oscuro con el sistema en claro. */
@@ -53,6 +58,7 @@ export function ChatPanel({
   onSendToChannel,
   onUseBudget,
   onUseMessage,
+  commerce,
   theme = 'auto',
   variant = 'card',
 }: ChatPresetProps) {
@@ -72,6 +78,7 @@ export function ChatPanel({
           onSendToChannel={onSendToChannel}
           onUseBudget={onUseBudget}
           onUseMessage={onUseMessage}
+          commerce={commerce}
         />
       </AiChatProvider>
     </div>

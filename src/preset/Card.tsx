@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import type { Card as CardType, CardAction, BudgetCard } from '../types';
+import type { Card as CardType, CardAction, BudgetCard, CommerceCallbacks } from '../types';
 import { budgetCardToPlainText, budgetTotal, formatArs } from './budgetSerializer';
+import { defaultLabels, type Labels } from './labels';
+import { SalesCard } from './SalesCards';
 
 // Defensa XSS: solo dejamos pasar esquemas seguros (evita href="javascript:…").
 const SAFE_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']);
@@ -71,7 +73,7 @@ function CardActions({
   useBudgetLabel,
   copiedLabel,
 }: {
-  card: CardType;
+  card: BudgetCard;
   onSendToChannel?: (text: string) => void;
   onUseBudget?: (card: BudgetCard) => void;
   useBudgetLabel?: string;
@@ -108,7 +110,7 @@ function CardActions({
     .filter((x): x is Rendered => x !== null);
 
   // Botón del host: usar la card estructurada (p.ej. precargar el editor de presupuestos).
-  const useBudget = onUseBudget && card.type === 'budget';
+  const useBudget = Boolean(onUseBudget);
 
   if (rendered.length === 0 && !useBudget) return null;
 
@@ -117,7 +119,7 @@ function CardActions({
       {useBudget && (
         <button
           type="button"
-          onClick={() => onUseBudget(card)}
+          onClick={() => onUseBudget?.(card)}
           className="aichat-action aichat-action-primary"
         >
           <ActionIcon name="external" />
@@ -195,22 +197,37 @@ function BudgetBody({ card }: { card: BudgetCard }) {
   );
 }
 
+// Despacha por `type`. La budget card sigue exactamente como antes; las de venta viven en
+// SalesCards.tsx. Un `type` desconocido no dibuja nada: el evento SSE `card` se castea sin
+// validar y un widget viejo tiene que ignorar tipos nuevos (contrato sales-cards/v1).
 export function Card({
   card,
   onSendToChannel,
   onUseBudget,
   useBudgetLabel,
   copiedLabel = 'Copiado',
+  commerce,
+  onReply,
+  labels = defaultLabels,
 }: {
   card: CardType;
   onSendToChannel?: (text: string) => void;
   onUseBudget?: (card: BudgetCard) => void;
   useBudgetLabel?: string;
   copiedLabel?: string;
+  /** Acciones de comercio del host para las cards de venta (opt-in, ADR 0008). */
+  commerce?: CommerceCallbacks;
+  /** Envía una respuesta sugerida (card `replies`). Sin esto, la card no dibuja botones. */
+  onReply?: (text: string) => void;
+  /** Textos de las cards de venta. */
+  labels?: Labels;
 }) {
+  if (card.type !== 'budget') {
+    return <SalesCard card={card} commerce={commerce} onReply={onReply} labels={labels} />;
+  }
   return (
     <div className="aichat-card">
-      {card.type === 'budget' && <BudgetBody card={card} />}
+      <BudgetBody card={card} />
       <CardActions
         card={card}
         onSendToChannel={onSendToChannel}

@@ -11,8 +11,8 @@ function codeForStatus(status: number): string {
   return 'http_error';
 }
 
-// 503 y 401 mandan un motivo específico en el body ({error: '...'}); 404 y 429 se
-// explican solos con el status. Clonamos por las dudas: si esto no es JSON válido,
+// 503, 429 y 401 mandan un motivo específico en el body ({error: '...'}); 404 se explica
+// solo con el status. Clonamos por las dudas: si esto no es JSON válido,
 // dejamos el body original intacto para quien llame después.
 async function readErrorCode(res: Response, fallback: string): Promise<string> {
   try {
@@ -32,6 +32,12 @@ const CONFIG_CODES = new Set(['missing_api_key', 'invalid_api_key']);
 
 async function errorCodeFor(res: Response): Promise<string> {
   if (res.status === 503) return readErrorCode(res, 'http_error');
+  // 429 trae el tope que saltó ({error: 'messages_per_day_user'}, 'tokens_per_month', …);
+  // sin body legible sigue siendo 'rate_limit'. labelForError los junta a todos.
+  if (res.status === 429) return readErrorCode(res, 'rate_limit');
+  // 413 es siempre "mensaje demasiado largo": no leemos el body porque el límite de body de
+  // Fastify también responde 413 con su propio `code` (FST_ERR_…) que el widget no conoce.
+  if (res.status === 413) return 'message_too_long';
   if (res.status === 401) {
     const reason = await readErrorCode(res, 'auth');
     if (CONFIG_CODES.has(reason)) return 'config';

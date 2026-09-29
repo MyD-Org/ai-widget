@@ -18,6 +18,8 @@ export interface Labels {
    *  arregla reintentando. */
   errorNoCredits: string;
   errorGeneric: string;
+  /** code:'message_too_long' (413): el mensaje supera `max_message_chars` del tenant. */
+  errorMessageTooLong: string;
   copyLabel: string;
   copiedLabel: string;
   sendToChannelLabel: string;
@@ -45,6 +47,22 @@ export interface Labels {
   historyRetry: string;
   /** Mensaje de error cuando falla la carga del listado de conversaciones. */
   historyError: string;
+  // Cards de venta. Texto neutro (infinitivos, impersonal): sirve con el registro del agente
+  // (vos) y con el del resto del producto del host (usted).
+  /** Botón "Agregar" de una fila de la card `products` (requiere commerce.onAddProducts). */
+  addLabel: string;
+  /** Estado tras agregar (fila de `products` o botón de la card `cart`). */
+  addedLabel: string;
+  /** Botón de la card `cart` (requiere commerce.onAddProducts). */
+  addAllLabel: string;
+  /** Botón "Ver" de una fila de `products` (requiere commerce.onOpenProduct). */
+  viewProductLabel: string;
+  /** Botón de la card `handoff`. */
+  handoffLabel: string;
+  /** Tag de un producto que el host resolvió con available === false. */
+  unavailableLabel: string;
+  /** Fila de total de la card `cart` (solo si todas las líneas tienen precio resuelto). */
+  referenceTotalLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -62,6 +80,7 @@ export const defaultLabels: Labels = {
   errorRateLimit: 'Demasiados mensajes. Probá en un momento.',
   errorNoCredits: 'No contás con créditos disponibles.',
   errorGeneric: 'Hubo un problema. Intentá de nuevo.',
+  errorMessageTooLong: 'El mensaje es demasiado largo.',
   copyLabel: 'Copiar',
   copiedLabel: 'Copiado',
   sendToChannelLabel: 'Enviar al canal',
@@ -78,16 +97,34 @@ export const defaultLabels: Labels = {
   historyGroupOlder: 'Anteriores',
   historyRetry: 'Reintentar',
   historyError: 'No pudimos cargar tus conversaciones.',
+  addLabel: 'Agregar',
+  addedLabel: 'Agregado',
+  addAllLabel: 'Agregar todo al carrito',
+  viewProductLabel: 'Ver',
+  handoffLabel: 'Continuar por WhatsApp',
+  unavailableLabel: 'No disponible',
+  referenceTotalLabel: 'Total de referencia',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {
   return { ...defaultLabels, ...overrides };
 }
 
+// Todos los 429 de ai-api: el genérico, los topes del tenant y los topes por end_user. Al
+// usuario le da igual cuál saltó; ninguno se arregla reintentando ya.
+const RATE_LIMIT_CODES = new Set([
+  'rate_limit',
+  'messages_per_day',
+  'tokens_per_month',
+  'messages_per_day_user',
+  'tokens_per_day_user',
+]);
+
 export function labelForError(code: string | undefined, labels: Labels): string {
   if (code === 'auth') return labels.errorAuth;
   if (code === 'config') return labels.errorConfig;
-  if (code === 'rate_limit') return labels.errorRateLimit;
+  if (code === 'message_too_long') return labels.errorMessageTooLong;
+  if (code && RATE_LIMIT_CODES.has(code)) return labels.errorRateLimit;
   if (code === 'no_credits' || code === 'agent_disabled') return labels.errorNoCredits;
   return labels.errorGeneric;
 }
