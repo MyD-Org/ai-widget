@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ChatPanel, ChatDrawer } from '../src/preset';
-import type { AiChatConfig } from '../src/types';
-import { createMockFetch, MOCK_AGENTS, MOCK_PROFILES } from './mock';
+import type { AiChatConfig, CommerceCallbacks } from '../src/types';
+import { createMockFetch, MOCK_AGENTS, MOCK_PRODUCTS, MOCK_PROFILES } from './mock';
 import '../src/styles/aichat.css';
 
 // baseUrl '' → URLs relativas (/v1, /demo) que el dev server de Vite proxea a ai-api.
@@ -29,6 +29,18 @@ function mintToken(profile: string): Promise<string> {
     })
     .then((j) => j.token as string);
 }
+
+// Acciones de comercio del playground: resuelve contra MOCK_PRODUCTS y loguea lo que el Shop
+// haría (agregar al carrito, abrir la ficha, abrir WhatsApp).
+const commerce: CommerceCallbacks = {
+  resolveProducts: async (ids) => {
+    await new Promise((r) => setTimeout(r, 400));
+    return ids.flatMap((id) => (MOCK_PRODUCTS[id] ? [{ id, ...MOCK_PRODUCTS[id] }] : []));
+  },
+  onAddProducts: (lines) => console.log('[playground] agregar al carrito', lines),
+  onOpenProduct: (id) => console.log('[playground] abrir ficha', id),
+  onHandoff: (card) => console.log('[playground] traspaso', card),
+};
 
 function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -153,13 +165,13 @@ function App() {
 
       {config && mode === 'panel' && (
         <div style={{ height: 560, maxWidth: 480 }}>
-          <ChatPanel key={widgetKey} config={config} showActivity={showActivity} enableHistory={enableHistory} theme={theme} branding={{ title: 'Central Led', primaryColor: accent }} />
+          <ChatPanel key={widgetKey} config={config} showActivity={showActivity} enableHistory={enableHistory} theme={theme} branding={{ title: 'Central Led', primaryColor: accent }} commerce={commerce} />
         </div>
       )}
       {config && mode === 'drawer' && (
         <>
           <p style={{ color: '#888' }}>El launcher flotante está abajo a la derecha 👉</p>
-          <ChatDrawer key={widgetKey} config={config} showActivity={showActivity} enableHistory={enableHistory} theme={theme} branding={{ title: 'Central Led', primaryColor: accent }} />
+          <ChatDrawer key={widgetKey} config={config} showActivity={showActivity} enableHistory={enableHistory} theme={theme} branding={{ title: 'Central Led', primaryColor: accent }} commerce={commerce} />
         </>
       )}
     </div>

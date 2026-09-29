@@ -5,7 +5,7 @@ import { brandingStyle, themeClass } from './branding';
 import { ChatBody } from './ChatBody';
 import type { ChatPresetProps } from './ChatPanel';
 
-export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableHistory = false, theme = 'auto', onSendToChannel, onUseBudget, onUseMessage }: ChatPresetProps) {
+export function ChatDrawer({ config, branding, labels, showActivity = false, className, enableCopy = false, enableHistory = false, theme = 'auto', onSendToChannel, onUseBudget, onUseMessage, commerce }: ChatPresetProps) {
   const resolved = resolveLabels(labels);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -26,6 +26,7 @@ export function ChatDrawer({ config, branding, labels, showActivity = false, cla
               onSendToChannel={onSendToChannel}
               onUseBudget={onUseBudget}
               onUseMessage={onUseMessage}
+              commerce={commerce}
             />
           </AiChatProvider>
         </div>

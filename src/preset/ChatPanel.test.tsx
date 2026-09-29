@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatPanel } from './ChatPanel';
 
@@ -105,5 +105,95 @@ describe('ChatPanel', () => {
     render(<ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' }} />);
     await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'hi{Enter}');
     expect(await screen.findByText('Demasiados mensajes. Probá en un momento.')).toBeInTheDocument();
+  });
+
+  it('413 y 429 por usuario muestran su mensaje', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'c' }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'message_too_long' }), { status: 413 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'tokens_per_day_user' }), { status: 429 }));
+    render(<ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' }} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'largo{Enter}');
+    expect(await screen.findByText('El mensaje es demasiado largo.')).toBeInTheDocument();
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'otro{Enter}');
+    expect(await screen.findByText('Demasiados mensajes. Probá en un momento.')).toBeInTheDocument();
+  });
+});
+
+describe('ChatPanel — cards de venta', () => {
+  const replies = { type: 'replies', options: ['Para interior', 'Para exterior'] };
+  const cfg = { baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' as const };
+
+  // Stream que el test controla: permite afirmar qué se ve MIENTRAS sigue el streaming.
+  function controlledSse() {
+    const enc = new TextEncoder();
+    let ctrl!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start: (c) => void (ctrl = c) });
+    return {
+      response: new Response(body, { status: 200 }),
+      push: (block: string) => ctrl.enqueue(enc.encode(block)),
+      close: () => ctrl.close(),
+    };
+  }
+
+  it('replies no se dibuja durante el streaming; aparece al terminar y tocarla envía', async () => {
+    const stream = controlledSse();
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'r1' }), { status: 201 }))
+      .mockResolvedValueOnce(stream.response)
+      .mockResolvedValueOnce(sseResponse(['event: text\ndata: {"delta":"Perfecto"}\n\n', 'event: done\ndata: {}\n\n']));
+    render(<ChatPanel config={cfg} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'quiero luces{Enter}');
+
+    stream.push('event: text\ndata: {"delta":"¿Dónde van?"}\n\n');
+    stream.push(`event: card\ndata: ${JSON.stringify(replies)}\n\n`);
+    expect(await screen.findByText('¿Dónde van?')).toBeInTheDocument();
+    await act(async () => {});
+    expect(screen.queryByRole('button', { name: 'Para exterior' })).toBeNull();
+
+    stream.push('event: done\ndata: {}\n\n');
+    stream.close();
+    const opt = await screen.findByRole('button', { name: 'Para exterior' });
+    await userEvent.click(opt);
+
+    // Se envió como mensaje del usuario y las sugerencias viejas desaparecen.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({ content: 'Para exterior' });
+    expect(await screen.findByText('Perfecto')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Para exterior' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Para interior' })).toBeNull();
+  });
+
+  it('replies que no es del último mensaje no se dibuja', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'r2' }), { status: 201 }))
+      .mockResolvedValueOnce(
+        sseResponse([
+          `event: card\ndata: ${JSON.stringify(replies)}\n\n`,
+          `event: card\ndata: ${JSON.stringify({ type: 'products', items: [{ id: '1', label: 'Reflector' }] })}\n\n`,
+          'event: done\ndata: {}\n\n',
+        ]),
+      );
+    render(<ChatPanel config={cfg} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'hola{Enter}');
+    expect(await screen.findByText('Reflector')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar' })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Para exterior' })).toBeNull();
+  });
+
+  it('commerce llega a las cards (onAddProducts del cart)', async () => {
+    const onAddProducts = vi.fn();
+    const cart = { type: 'cart', lines: [{ id: '7', label: 'Panel', qty: 3 }] };
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'r3' }), { status: 201 }))
+      .mockResolvedValueOnce(sseResponse([`event: card\ndata: ${JSON.stringify(cart)}\n\n`, 'event: done\ndata: {}\n\n']));
+    render(<ChatPanel config={cfg} commerce={{ onAddProducts }} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'armalo{Enter}');
+    await userEvent.click(await screen.findByRole('button', { name: 'Agregar todo al carrito' }));
+    expect(onAddProducts).toHaveBeenCalledWith([{ id: '7', qty: 3 }]);
   });
 });

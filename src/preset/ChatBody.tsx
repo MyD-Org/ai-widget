@@ -6,7 +6,7 @@ import { mdToWhatsApp } from './mdToWhatsApp';
 import { Card } from './Card';
 import { ConversationMenu } from './ConversationMenu';
 import type { Branding } from './branding';
-import type { BudgetCard } from '../types';
+import type { BudgetCard, CommerceCallbacks } from '../types';
 
 function HistoryIcon() {
   return (
@@ -35,6 +35,7 @@ export function ChatBody({
   onSendToChannel,
   onUseBudget,
   onUseMessage,
+  commerce,
 }: {
   branding?: Branding;
   labels: Labels;
@@ -49,6 +50,7 @@ export function ChatBody({
   onSendToChannel?: (text: string) => void;
   onUseBudget?: (card: BudgetCard) => void;
   onUseMessage?: (text: string) => void;
+  commerce?: CommerceCallbacks;
 }) {
   const {
     messages,
@@ -260,33 +262,43 @@ export function ChatBody({
       <div className="aichat-log" ref={logRef} onScroll={onLogScroll}>
         {messages.length === 0 && !streaming && <div className="aichat-empty">{labels.emptyState}</div>}
 
-        {messages.map((m) => (
-          <Fragment key={m.id}>
-            {(m.role === 'user' || m.text.trim() !== '') && (
-              <div className={`aichat-msg aichat-msg-${m.role}`}>
-                {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
-                {enableCopy && m.role === 'assistant' && m.text.trim() !== '' && (
-                  <button
-                    type="button"
-                    className="aichat-copy"
-                    onClick={() => copyMessage(m.id, m.text)}
-                  >
-                    {copiedId === m.id ? labels.copiedLabel : labels.copyLabel}
-                  </button>
-                )}
-              </div>
-            )}
-            {m.card && (
-              <Card
-                card={m.card}
-                onSendToChannel={onSendToChannel}
-                onUseBudget={onUseBudget}
-                useBudgetLabel={labels.useBudgetLabel}
-                copiedLabel={labels.copiedLabel}
-              />
-            )}
-          </Fragment>
-        ))}
+        {messages.map((m, i) => {
+          // Las respuestas sugeridas solo valen para el turno actual: se dibujan si la card es
+          // del ÚLTIMO mensaje y ya terminó el streaming. Si no, no se dibujan en absoluto —
+          // una sugerencia vieja tocada fuera de contexto manda un mensaje que no encaja.
+          const isReplies = m.card?.type === 'replies';
+          const showCard = m.card && (!isReplies || (i === messages.length - 1 && !streaming));
+          return (
+            <Fragment key={m.id}>
+              {(m.role === 'user' || m.text.trim() !== '') && (
+                <div className={`aichat-msg aichat-msg-${m.role}`}>
+                  {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
+                  {enableCopy && m.role === 'assistant' && m.text.trim() !== '' && (
+                    <button
+                      type="button"
+                      className="aichat-copy"
+                      onClick={() => copyMessage(m.id, m.text)}
+                    >
+                      {copiedId === m.id ? labels.copiedLabel : labels.copyLabel}
+                    </button>
+                  )}
+                </div>
+              )}
+              {showCard && m.card && (
+                <Card
+                  card={m.card}
+                  onSendToChannel={onSendToChannel}
+                  onUseBudget={onUseBudget}
+                  useBudgetLabel={labels.useBudgetLabel}
+                  copiedLabel={labels.copiedLabel}
+                  commerce={commerce}
+                  onReply={isReplies ? send : undefined}
+                  labels={labels}
+                />
+              )}
+            </Fragment>
+          );
+        })}
 
         {showActivityChip && (
           <div className="aichat-typing">

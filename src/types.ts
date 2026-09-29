@@ -31,7 +31,64 @@ export interface BudgetCard {
   actions: CardAction[];
 }
 
-export type Card = BudgetCard;
+// Cards de venta (contrato platform/contracts/sales-cards/v1). Llevan ids, NO datos
+// comerciales: precio, foto y stock los completa el host con `commerce.resolveProducts`.
+// `label` lo escribe el modelo y es solo texto de respaldo; nunca se muestra un precio suyo.
+export interface ProductsCard {
+  type: 'products';
+  title?: string;
+  items: { id: string; label: string; reason?: string }[];
+}
+
+export interface CartCard {
+  type: 'cart';
+  title?: string;
+  lines: { id: string; label: string; qty: number }[];
+}
+
+/** Respuestas sugeridas: tocar una la envía como mensaje del usuario (no depende del host). */
+export interface RepliesCard {
+  type: 'replies';
+  options: string[];
+}
+
+/** Traspaso a un humano. `phone` lo agrega ai-api desde la config del tenant (no el modelo). */
+export interface HandoffCard {
+  type: 'handoff';
+  channel: 'whatsapp';
+  /** Solo dígitos, E.164 sin `+`. */
+  phone: string;
+  summary: string;
+}
+
+export type SalesCard = ProductsCard | CartCard | RepliesCard | HandoffCard;
+
+export type Card = BudgetCard | SalesCard;
+
+/** Producto resuelto por el host (catálogo + lista de precios de quien mira). */
+export interface ResolvedProduct {
+  id: string;
+  name: string;
+  brand?: string;
+  imageUrl?: string;
+  /** Precio unitario a exhibir, ya en la lista de quien mira. */
+  price?: number;
+  available?: boolean;
+}
+
+/** Acciones de comercio del host para las cards de venta. Todas opcionales (ADR 0008): sin el
+ *  callback, el botón correspondiente no se dibuja. */
+export interface CommerceCallbacks {
+  /** Completa precio/foto/stock de los ids de una card. Si falla o no devuelve un id, la card
+   *  muestra el `label` del modelo sin precio ni foto. */
+  resolveProducts?: (ids: string[]) => Promise<ResolvedProduct[]>;
+  /** "Agregar" / "Agregar todo al carrito". El host recalcula precio y stock del lado suyo. */
+  onAddProducts?: (lines: { id: string; qty: number }[]) => void;
+  /** "Ver": abrir la ficha del producto en el host. */
+  onOpenProduct?: (id: string) => void;
+  /** "Continuar por WhatsApp". Sin callback, la card abre `wa.me` con el resumen. */
+  onHandoff?: (card: HandoffCard) => void;
+}
 
 export interface Message {
   id: string;

@@ -1,0 +1,8 @@
+{
+  "type": "cart",
+  "title": "Su pedido",
+  "lines": [
+    { "id": "2201", "label": "Dicroica LED GU10 7W cálida", "qty": 20 },
+    { "id": "2202", "label": "Transformador electrónico 12V 60W", "qty": 5 }
+  ]
+}
