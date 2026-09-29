@@ -9,10 +9,11 @@ export const MOCK_AGENTS = [
 
 // Catálogo del mock para `commerce.resolveProducts` del playground. El 1199 falta a
 // propósito: la card tiene que caer al label del modelo, sin precio ni foto.
-export const MOCK_PRODUCTS: Record<string, { name: string; brand: string; price: number; available: boolean }> = {
-  '1101': { name: 'Reflector LED 50W IP65 luz fría', brand: 'Marca Demo', price: 18900, available: true },
-  '1102': { name: 'Reflector LED 100W IP66', brand: 'Marca Demo', price: 32400, available: false },
-  '2202': { name: 'Fotocélula 220V 10A', brand: 'Otra Marca', price: 6200, available: true },
+export const MOCK_PRODUCTS: Record<string, { name: string; brand: string; price: number; available: boolean; stock?: number; imageUrl?: string }> = {
+  '1101': { name: 'Reflector LED 50W IP65 luz fría', brand: 'Marca Demo', price: 18900, available: true, stock: 1, imageUrl: '/producto.svg' },
+  '1102': { name: 'Reflector LED 100W IP66', brand: 'Marca Demo', price: 32400, available: false, imageUrl: '/producto.svg' },
+  '3303': { name: 'Tira LED 5m luz cálida con fuente incluida', brand: 'Marca Demo', price: 12500, available: true, imageUrl: '/producto.svg' },
+  '2202': { name: 'Fotocélula 220V 10A', brand: 'Otra Marca', price: 6200, available: true, stock: 4, imageUrl: '/producto.svg' },
 };
 
 export const MOCK_PROFILES = [
@@ -37,13 +38,15 @@ const CANNED: Canned[] = [
   },
   {
     tools: ['buscar_productos'],
-    text: 'Para exterior te recomiendo estas dos:',
+    text: 'Para exterior te recomiendo estas opciones:',
     card: {
       type: 'products',
       items: [
         { id: '1101', label: 'Reflector LED 50W IP65', reason: 'Apto intemperie, ideal para un patio chico' },
         { id: '1102', label: 'Reflector LED 100W IP66', reason: 'Más potencia para patios grandes' },
         { id: '1199', label: 'Reflector solar 30W', reason: 'Sin cableado' },
+        { id: '2202', label: 'Fotocélula 220V 10A', reason: 'Enciende sola al anochecer' },
+        { id: '3303', label: 'Tira LED 5m', reason: 'Para el borde del techo' },
       ],
     },
   },

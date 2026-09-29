@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type {
   CartCard,
   CommerceCallbacks,
@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import type { Labels } from './labels';
 import { formatArs } from './budgetSerializer';
+import { ProductCarousel } from './ProductCarousel';
 
 type ResolveFn = CommerceCallbacks['resolveProducts'];
 
@@ -109,69 +110,90 @@ function CardTitle({ title }: { title?: string }) {
   );
 }
 
+// Aviso de stock bajo: solo con un `stock` entero de 1 a 5 (sin dato, no se inventa uno).
+function stockNote(stock: number | undefined, labels: Labels): string | undefined {
+  if (typeof stock !== 'number' || !Number.isInteger(stock) || stock < 1 || stock > 5) return undefined;
+  return stock === 1 ? labels.stockOneLabel : labels.stockFewLabel.replace('{n}', String(stock));
+}
+
 function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce?: CommerceCallbacks; labels: Labels }) {
   const { products, loading, complete } = useResolvedProducts(
     card.items.map((i) => i.id),
     commerce?.resolveProducts,
   );
-  // "Agregado" es por fila: agregar uno no debe marcar los demás.
+  const uid = useId();
+  // "Agregado" es por producto: agregar uno no debe marcar los demás.
   const [added, setAdded] = useState<Set<number>>(() => new Set());
   const onAdd = commerce?.onAddProducts;
   const onOpen = commerce?.onOpenProduct;
 
-  return (
-    <div className="aichat-card aichat-sales aichat-products" aria-busy={loading || undefined}>
-      <CardTitle title={card.title} />
-      <div className="aichat-product-rows">
-        {card.items.map((item, i) => {
-          const p = products.get(item.id);
-          const name = p?.name || item.label;
-          const img = safeImageSrc(p?.imageUrl);
-          const price = displayPrice(p);
-          // Sin el producto en una respuesta completa del host, "Agregar" no haría nada (el
-          // Shop no puede cargar algo que no vende): se muestra como no disponible.
-          const unavailable = p?.available === false || (complete && !p);
-          const isAdded = added.has(i);
-          return (
-            <div key={i} className="aichat-product">
-              {img && <img className="aichat-product-img" src={img} alt={name} loading="lazy" width={48} height={48} />}
-              <div className="aichat-product-info">
-                <span className="aichat-product-name">{name}</span>
-                {p?.brand && <span className="aichat-product-brand">{p.brand}</span>}
-                {item.reason && <span className="aichat-product-reason">{item.reason}</span>}
-                {(price != null || unavailable) && (
-                  <span className="aichat-product-meta">
-                    {price != null && <span className="aichat-card-amount">{formatArs(price)}</span>}
-                    {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
-                  </span>
-                )}
-              </div>
-              {(onAdd || onOpen) && (
-                <div className="aichat-product-actions">
-                  {onAdd && (
-                    <button
-                      type="button"
-                      className="aichat-mini aichat-mini-primary"
-                      disabled={unavailable || isAdded}
-                      onClick={() => {
-                        onAdd([{ id: item.id, qty: 1 }]);
-                        setAdded((s) => new Set(s).add(i));
-                      }}
-                    >
-                      {isAdded ? labels.addedLabel : labels.addLabel}
-                    </button>
-                  )}
-                  {onOpen && (
-                    <button type="button" className="aichat-mini" onClick={() => onOpen(item.id)}>
-                      {labels.viewProductLabel}
-                    </button>
-                  )}
-                </div>
+  const cards = card.items.map((item, i) => {
+    const p = products.get(item.id);
+    const name = p?.name || item.label;
+    const img = safeImageSrc(p?.imageUrl);
+    const price = displayPrice(p);
+    // Sin el producto en una respuesta completa del host, "Agregar" no haría nada (el
+    // Shop no puede cargar algo que no vende): se muestra como no disponible.
+    const unavailable = p?.available === false || (complete && !p);
+    const stock = unavailable ? undefined : stockNote(p?.stock, labels);
+    const isAdded = added.has(i);
+    const nameId = `${uid}-name-${i}`;
+    return (
+      <article key={i} className="aichat-product">
+        <div className="aichat-product-media">
+          {img && <img className="aichat-product-img" src={img} alt={name} loading="lazy" />}
+        </div>
+        <div className="aichat-product-body">
+          {p?.brand && <span className="aichat-product-brand">{p.brand}</span>}
+          <span id={nameId} className="aichat-product-name">{name}</span>
+          {item.reason && <span className="aichat-product-reason">{item.reason}</span>}
+          {price != null && <span className="aichat-product-price">{formatArs(price)}</span>}
+          {stock && <span className="aichat-stock-low">{stock}</span>}
+          {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
+          {(onAdd || onOpen) && (
+            <div className="aichat-product-actions">
+              {onAdd && (
+                <button
+                  type="button"
+                  className="aichat-mini aichat-mini-primary"
+                  aria-describedby={nameId}
+                  disabled={unavailable || isAdded}
+                  onClick={() => {
+                    onAdd([{ id: item.id, qty: 1 }]);
+                    setAdded((s) => new Set(s).add(i));
+                  }}
+                >
+                  {isAdded ? labels.addedLabel : labels.addLabel}
+                </button>
+              )}
+              {onOpen && (
+                <button
+                  type="button"
+                  className="aichat-mini"
+                  aria-describedby={nameId}
+                  onClick={() => onOpen(item.id)}
+                >
+                  {labels.viewProductLabel}
+                </button>
               )}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      </article>
+    );
+  });
+
+  return (
+    <div className="aichat-card aichat-sales aichat-products" aria-busy={loading || undefined}>
+      {card.title && <h4 className="aichat-products-title">{card.title}</h4>}
+      {/* Varios productos: carrusel. Uno solo: la card sola, sin carrusel. */}
+      {cards.length > 1 ? (
+        <ProductCarousel label={labels.carouselLabel} prevLabel={labels.carouselPrev} nextLabel={labels.carouselNext}>
+          {cards}
+        </ProductCarousel>
+      ) : (
+        <div className="aichat-product-single">{cards}</div>
+      )}
     </div>
   );
 }

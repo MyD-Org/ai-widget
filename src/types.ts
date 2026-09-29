@@ -74,6 +74,8 @@ export interface ResolvedProduct {
   /** Precio unitario a exhibir, ya en la lista de quien mira. */
   price?: number;
   available?: boolean;
+  /** Unidades en stock, si el host las conoce. Con 1 a 5 la card muestra "Queda 1" / "Quedan N". */
+  stock?: number;
 }
 
 /** Acciones de comercio del host para las cards de venta. Todas opcionales (ADR 0008): sin el
