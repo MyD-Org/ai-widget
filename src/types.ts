@@ -76,6 +76,10 @@ export interface ResolvedProduct {
   available?: boolean;
   /** Unidades en stock, si el host las conoce. Con 1 a 5 la card muestra "Queda 1" / "Quedan N". */
   stock?: number;
+  /** Código / SKU: la card muestra la línea "Cód. {sku}" bajo el nombre. */
+  sku?: string;
+  /** Tope del contador de cantidad. Sin valor, se usa `stock` si el host lo informó. */
+  maxQuantity?: number;
 }
 
 /** Acciones de comercio del host para las cards de venta. Todas opcionales (ADR 0008): sin el
@@ -86,8 +90,14 @@ export interface CommerceCallbacks {
   resolveProducts?: (ids: string[]) => Promise<ResolvedProduct[]>;
   /** "Agregar" / "Agregar todo al carrito". El host recalcula precio y stock del lado suyo. */
   onAddProducts?: (lines: { id: string; qty: number }[]) => void;
-  /** "Ver": abrir la ficha del producto en el host. */
+  /** Abrir la ficha del producto en el host (clic en la card, que es un enlace estirado). */
   onOpenProduct?: (id: string) => void;
+  /** Cantidad de cada producto en el carrito del host, por id. Con esto y `onSetQuantity`, "Agregar"
+   *  pasa a un contador de cantidad cuando el producto ya está en el carrito. Sin ellos, se
+   *  comporta como antes (botón que queda en "Agregado"). */
+  cartQuantities?: Record<string, number>;
+  /** Cambia la cantidad de un producto en el carrito del host; `qty` 0 lo quita. */
+  onSetQuantity?: (id: string, qty: number) => void;
   /** "Continuar por WhatsApp". Sin callback, la card abre `wa.me` con el resumen. */
   onHandoff?: (card: HandoffCard) => void;
 }

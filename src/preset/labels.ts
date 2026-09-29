@@ -71,6 +71,12 @@ export interface Labels {
   stockFewLabel: string;
   /** Fila de total de la card `cart` (solo si todas las líneas tienen precio resuelto). */
   referenceTotalLabel: string;
+  /** Prefijo de la línea de código bajo el nombre: "Cód. ABC". */
+  codeLabel: string;
+  /** Contador de cantidad de la card de producto. */
+  decrementLabel: string;
+  incrementLabel: string;
+  removeLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -117,6 +123,10 @@ export const defaultLabels: Labels = {
   carouselNext: 'Ver siguientes',
   stockOneLabel: 'Queda 1',
   stockFewLabel: 'Quedan {n}',
+  codeLabel: 'Cód.',
+  decrementLabel: 'Quitar uno',
+  incrementLabel: 'Agregar uno más',
+  removeLabel: 'Quitar del carrito',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {

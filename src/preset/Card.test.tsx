@@ -176,12 +176,13 @@ describe('card de producto (estilo catálogo)', () => {
       { id: 'b', name: 'Reflector B', price: 100, available: true },
     ]);
 
-  it('muestra marca, nombre, precio y botones Agregar/Ver por producto', async () => {
+  it('muestra marca, nombre, precio y Agregar por producto; la card entera abre la ficha', async () => {
     render(<Card card={two} commerce={{ resolveProducts: res(), onAddProducts: vi.fn(), onOpenProduct: vi.fn() }} />);
     expect(await screen.findByText('Macroled')).toBeInTheDocument();
     expect(screen.getByText(/18\.900/)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Agregar' })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: 'Ver' })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Ver' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Reflector A' })).toBeInTheDocument();
   });
 
   it('avisa "Queda 1" / "Quedan 3" solo con stock 1 a 5, y no sin dato ni con stock alto', async () => {

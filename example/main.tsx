@@ -30,19 +30,37 @@ function mintToken(profile: string): Promise<string> {
     .then((j) => j.token as string);
 }
 
-// Acciones de comercio del playground: resuelve contra MOCK_PRODUCTS y loguea lo que el Shop
-// haría (agregar al carrito, abrir la ficha, abrir WhatsApp).
-const commerce: CommerceCallbacks = {
-  resolveProducts: async (ids) => {
-    await new Promise((r) => setTimeout(r, 400));
-    return ids.flatMap((id) => (MOCK_PRODUCTS[id] ? [{ id, ...MOCK_PRODUCTS[id] }] : []));
-  },
-  onAddProducts: (lines) => console.log('[playground] agregar al carrito', lines),
-  onOpenProduct: (id) => console.log('[playground] abrir ficha', id),
-  onHandoff: (card) => console.log('[playground] traspaso', card),
-};
+// Acciones de comercio del playground: resuelve contra MOCK_PRODUCTS y simula el carrito del Shop
+// (cantidades por id) para ver el contador de cantidad.
+function useCommerce(): CommerceCallbacks {
+  const [cart, setCart] = useState<Record<string, number>>({});
+  return useMemo<CommerceCallbacks>(
+    () => ({
+      resolveProducts: async (ids) => {
+        await new Promise((r) => setTimeout(r, 400));
+        return ids.flatMap((id) => (MOCK_PRODUCTS[id] ? [{ id, ...MOCK_PRODUCTS[id] }] : []));
+      },
+      onAddProducts: (lines) =>
+        setCart((c) => {
+          const next = { ...c };
+          for (const l of lines) next[l.id] = (next[l.id] ?? 0) + l.qty;
+          return next;
+        }),
+      onSetQuantity: (id, qty) =>
+        setCart((c) => {
+          const { [id]: _quitado, ...rest } = c;
+          return qty > 0 ? { ...rest, [id]: qty } : rest;
+        }),
+      cartQuantities: cart,
+      onOpenProduct: (id) => console.log('[playground] abrir ficha', id),
+      onHandoff: (card) => console.log('[playground] traspaso', card),
+    }),
+    [cart],
+  );
+}
 
 function App() {
+  const commerce = useCommerce();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [agentId, setAgentId] = useState('');
