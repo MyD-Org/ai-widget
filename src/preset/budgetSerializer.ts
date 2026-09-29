@@ -10,6 +10,18 @@ export function formatArs(n: number): string {
   return `${sign}$${grouped}`;
 }
 
+// Precio de la card de producto: entero con miles y, si hay centavos, los dos dígitos aparte
+// para dibujarlos en superíndice ("$ 1.244⁰⁷"). Sin centavos, solo el entero.
+export function splitArs(n: number): { whole: string; cents?: string; text: string } {
+  const total = Math.round((Number.isFinite(n) ? n : 0) * 100);
+  const abs = Math.abs(total);
+  const whole = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const c = abs % 100;
+  const cents = c === 0 ? undefined : String(c).padStart(2, '0');
+  const sign = total < 0 ? '-' : '';
+  return { whole: `${sign}${whole}`, cents, text: `${sign}$${whole}${cents ? `,${cents}` : ''}` };
+}
+
 // Suma de subtotales de las líneas: el total SIEMPRE se deriva de las líneas, así nunca puede
 // contradecirlas (todo en lista pública).
 export function budgetTotal(card: BudgetCard): number {

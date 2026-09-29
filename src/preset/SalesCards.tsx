@@ -9,7 +9,7 @@ import type {
   SalesCard as SalesCardType,
 } from '../types';
 import type { Labels } from './labels';
-import { formatArs } from './budgetSerializer';
+import { formatArs, splitArs } from './budgetSerializer';
 import { ProductCarousel } from './ProductCarousel';
 
 type ResolveFn = CommerceCallbacks['resolveProducts'];
@@ -116,72 +116,176 @@ function stockNote(stock: number | undefined, labels: Labels): string | undefine
   return stock === 1 ? labels.stockOneLabel : labels.stockFewLabel.replace('{n}', String(stock));
 }
 
+function CartIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M2.5 3.5h2.7l2.3 11.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.2" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </svg>
+  );
+}
+
+// "$ 1.244⁰⁷": los centavos van chicos y en superíndice. El texto completo queda para lectores
+// de pantalla (el visual va aria-hidden: "1.244 07" se leería como dos números).
+function ProductPrice({ value }: { value: number }) {
+  const { whole, cents, text } = splitArs(value);
+  return (
+    <span className="aichat-product-price">
+      <span aria-hidden="true">
+        {`$\u00a0${whole}`}
+        {cents && <sup className="aichat-product-cents">{cents}</sup>}
+      </span>
+      <span className="aichat-sr-only">{text}</span>
+    </span>
+  );
+}
+
+// Cantidad en el carrito del host: entero > 0 o nada.
+function cartQty(map: Record<string, number> | undefined, id: string): number {
+  const n = map?.[id];
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+function ProductItem({
+  itemId,
+  label,
+  product,
+  complete,
+  commerce,
+  labels,
+}: {
+  itemId: string;
+  label: string;
+  product?: ResolvedProduct;
+  complete: boolean;
+  commerce?: CommerceCallbacks;
+  labels: Labels;
+}) {
+  const nameId = useId();
+  // "Agregado" solo se usa sin contador (modo 0.5.x): con contador lo dice el propio contador.
+  const [added, setAdded] = useState(false);
+  // El contador solo anima si lo provoca un clic en "Agregar": uno que ya estaba en el carrito
+  // al cargar la card aparece quieto.
+  const [animateIn, setAnimateIn] = useState(false);
+  const { onAddProducts: onAdd, onOpenProduct: onOpen, onSetQuantity, cartQuantities } = commerce ?? {};
+  const stepper = onSetQuantity != null && cartQuantities != null;
+  const qty = stepper ? cartQty(cartQuantities, itemId) : 0;
+
+  const name = product?.name || label;
+  const img = safeImageSrc(product?.imageUrl);
+  const price = displayPrice(product);
+  // Sin el producto en una respuesta completa del host, "Agregar" no haría nada (el Shop no
+  // puede cargar algo que no vende): se muestra como no disponible.
+  const unavailable = product?.available === false || (complete && !product);
+  // Resuelto pero sin precio: tampoco se vende (el Shop no lo deja entrar al carrito).
+  const blocked = unavailable || (product != null && price == null);
+  const stock = unavailable ? undefined : stockNote(product?.stock, labels);
+  const sku = product?.sku?.trim();
+  const max =
+    typeof product?.maxQuantity === 'number' && product.maxQuantity >= 1 ? Math.floor(product.maxQuantity) : Infinity;
+  // Bloqueado o ya pasado del tope: no se suma más, pero sí se puede bajar.
+  const canIncrement = !blocked && qty < max;
+
+  return (
+    <article className="aichat-product">
+      <div className="aichat-product-media">
+        {img && <img className="aichat-product-img" src={img} alt={name} loading="lazy" />}
+      </div>
+      <div className="aichat-product-body">
+        {product?.brand && <span className="aichat-product-brand">{product.brand}</span>}
+        <span id={nameId} className="aichat-product-name">
+          {onOpen ? (
+            // Enlace estirado: el ::after cubre toda la card, así hay un solo elemento
+            // interactivo por card para abrir la ficha (los botones de abajo quedan por encima).
+            <button type="button" className="aichat-product-open" onClick={() => onOpen(itemId)}>
+              {name}
+            </button>
+          ) : (
+            name
+          )}
+        </span>
+        {sku && <span className="aichat-product-code">{`${labels.codeLabel} ${sku}`}</span>}
+        {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
+        {(price != null || stock) && (
+          <div className="aichat-product-pricerow">
+            {price != null && <ProductPrice value={price} />}
+            {stock && <span className="aichat-stock-low">{stock}</span>}
+          </div>
+        )}
+        {qty > 0 ? (
+          <div className={`aichat-qty${animateIn ? ' aichat-qty-enter' : ''}`}>
+            <button
+              type="button"
+              className="aichat-qty-btn"
+              aria-label={qty === 1 ? labels.removeLabel : labels.decrementLabel}
+              aria-describedby={nameId}
+              onClick={() => onSetQuantity?.(itemId, qty - 1)}
+            >
+              {qty === 1 ? <TrashIcon /> : '\u2212'}
+            </button>
+            <span className="aichat-qty-value" role="status">
+              {qty}
+            </span>
+            <button
+              type="button"
+              className="aichat-qty-btn"
+              aria-label={labels.incrementLabel}
+              aria-describedby={nameId}
+              disabled={!canIncrement}
+              onClick={() => onSetQuantity?.(itemId, qty + 1)}
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          onAdd && (
+            <button
+              type="button"
+              className="aichat-product-add"
+              aria-describedby={nameId}
+              disabled={blocked || (!stepper && added)}
+              onClick={() => {
+                onAdd([{ id: itemId, qty: 1 }]);
+                if (stepper) setAnimateIn(true);
+                else setAdded(true);
+              }}
+            >
+              {!added && <CartIcon />}
+              {added && !stepper ? labels.addedLabel : labels.addLabel}
+            </button>
+          )
+        )}
+      </div>
+    </article>
+  );
+}
+
 function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce?: CommerceCallbacks; labels: Labels }) {
   const { products, loading, complete } = useResolvedProducts(
     card.items.map((i) => i.id),
     commerce?.resolveProducts,
   );
-  const uid = useId();
-  // "Agregado" es por producto: agregar uno no debe marcar los demás.
-  const [added, setAdded] = useState<Set<number>>(() => new Set());
-  const onAdd = commerce?.onAddProducts;
-  const onOpen = commerce?.onOpenProduct;
 
-  const cards = card.items.map((item, i) => {
-    const p = products.get(item.id);
-    const name = p?.name || item.label;
-    const img = safeImageSrc(p?.imageUrl);
-    const price = displayPrice(p);
-    // Sin el producto en una respuesta completa del host, "Agregar" no haría nada (el
-    // Shop no puede cargar algo que no vende): se muestra como no disponible.
-    const unavailable = p?.available === false || (complete && !p);
-    const stock = unavailable ? undefined : stockNote(p?.stock, labels);
-    const isAdded = added.has(i);
-    const nameId = `${uid}-name-${i}`;
-    return (
-      <article key={i} className="aichat-product">
-        <div className="aichat-product-media">
-          {img && <img className="aichat-product-img" src={img} alt={name} loading="lazy" />}
-        </div>
-        <div className="aichat-product-body">
-          {p?.brand && <span className="aichat-product-brand">{p.brand}</span>}
-          <span id={nameId} className="aichat-product-name">{name}</span>
-          {item.reason && <span className="aichat-product-reason">{item.reason}</span>}
-          {price != null && <span className="aichat-product-price">{formatArs(price)}</span>}
-          {stock && <span className="aichat-stock-low">{stock}</span>}
-          {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
-          {(onAdd || onOpen) && (
-            <div className="aichat-product-actions">
-              {onAdd && (
-                <button
-                  type="button"
-                  className="aichat-mini aichat-mini-primary"
-                  aria-describedby={nameId}
-                  disabled={unavailable || isAdded}
-                  onClick={() => {
-                    onAdd([{ id: item.id, qty: 1 }]);
-                    setAdded((s) => new Set(s).add(i));
-                  }}
-                >
-                  {isAdded ? labels.addedLabel : labels.addLabel}
-                </button>
-              )}
-              {onOpen && (
-                <button
-                  type="button"
-                  className="aichat-mini"
-                  aria-describedby={nameId}
-                  onClick={() => onOpen(item.id)}
-                >
-                  {labels.viewProductLabel}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </article>
-    );
-  });
+  const cards = card.items.map((item, i) => (
+    <ProductItem
+      key={i}
+      itemId={item.id}
+      label={item.label}
+      product={products.get(item.id)}
+      complete={complete}
+      commerce={commerce}
+      labels={labels}
+    />
+  ));
 
   return (
     <div className="aichat-card aichat-sales aichat-products" aria-busy={loading || undefined}>

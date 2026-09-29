@@ -30,18 +30,6 @@ function mintToken(profile: string): Promise<string> {
     .then((j) => j.token as string);
 }
 
-// Acciones de comercio del playground: resuelve contra MOCK_PRODUCTS y loguea lo que el Shop
-// haría (agregar al carrito, abrir la ficha, abrir WhatsApp).
-const commerce: CommerceCallbacks = {
-  resolveProducts: async (ids) => {
-    await new Promise((r) => setTimeout(r, 400));
-    return ids.flatMap((id) => (MOCK_PRODUCTS[id] ? [{ id, ...MOCK_PRODUCTS[id] }] : []));
-  },
-  onAddProducts: (lines) => console.log('[playground] agregar al carrito', lines),
-  onOpenProduct: (id) => console.log('[playground] abrir ficha', id),
-  onHandoff: (card) => console.log('[playground] traspaso', card),
-};
-
 function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -54,6 +42,36 @@ function App() {
   const [accent, setAccent] = useState('#1c1917');
   const [mock, setMock] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  // Carrito simulado del host: id → unidades. Agregar entra por onAddProducts; el contador
+  // (+, −, tacho) por onSetQuantity, con el tope de MOCK_PRODUCTS[id].maxQuantity.
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const commerce = useMemo<CommerceCallbacks>(
+    () => ({
+      resolveProducts: async (ids) => {
+        await new Promise((r) => setTimeout(r, 400));
+        return ids.flatMap((id) => (MOCK_PRODUCTS[id] ? [{ id, ...MOCK_PRODUCTS[id] }] : []));
+      },
+      onAddProducts: (lines) => {
+        console.log('[playground] agregar al carrito', lines);
+        setCart((c) => {
+          const next = { ...c };
+          for (const { id, qty } of lines) next[id] = (next[id] ?? 0) + qty;
+          return next;
+        });
+      },
+      onSetQuantity: (id, qty) => {
+        console.log('[playground] cantidad', id, qty);
+        setCart((c) => {
+          const { [id]: _, ...rest } = c;
+          return qty > 0 ? { ...rest, [id]: qty } : rest;
+        });
+      },
+      cartQuantities: cart,
+      onOpenProduct: (id) => console.log('[playground] abrir ficha', id),
+      onHandoff: (card) => console.log('[playground] traspaso', card),
+    }),
+    [cart],
+  );
 
   // En mock no hay red: fetch inyectado que simula los endpoints.
   const mockFetch = useMemo(() => createMockFetch(), []);

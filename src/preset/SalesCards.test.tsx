@@ -21,11 +21,12 @@ const resolved: ResolvedProduct[] = [
 ];
 
 describe('card products', () => {
-  it('renderiza la fixture con labels y reason, sin botones si el host no pasa callbacks', () => {
+  it('renderiza la fixture con labels (sin el motivo del agente), sin botones si el host no pasa callbacks', () => {
     render(<Card card={products} />);
     expect(screen.getByText('Opciones para exterior')).toBeInTheDocument();
     expect(screen.getByText('Reflector LED 50W IP65 luz fría')).toBeInTheDocument();
-    expect(screen.getByText('Apto intemperie')).toBeInTheDocument();
+    // El catálogo no tiene texto de motivo: la card no lo dibuja.
+    expect(screen.queryByText('Apto intemperie')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByText(/\$/)).toBeNull();
   });
@@ -36,7 +37,7 @@ describe('card products', () => {
     expect(await screen.findByText('Reflector LED 50W Macroled')).toBeInTheDocument();
     expect(resolveProducts).toHaveBeenCalledWith(['1101', '1102']);
     expect(screen.getByText('Macroled')).toBeInTheDocument();
-    expect(screen.getByText('$25.990')).toBeInTheDocument();
+    expect(screen.getByText('$25.990')).toBeInTheDocument(); // texto para lectores de pantalla
     expect(screen.getByText('$41.500')).toBeInTheDocument();
     expect(screen.getByText('No disponible')).toBeInTheDocument();
     const img = screen.getByRole('img', { name: 'Reflector LED 50W Macroled' });
@@ -108,12 +109,144 @@ describe('card products', () => {
     for (const b of screen.getAllByRole('button', { name: 'Agregar' })) expect(b).toBeEnabled();
   });
 
-  it('Ver solo con onOpenProduct, y recibe el id', async () => {
+  it('con onOpenProduct el nombre es el único enlace de la card (sin botón "Ver") y recibe el id', async () => {
     const onOpenProduct = vi.fn();
     render(<Card card={products} commerce={{ onOpenProduct }} />);
+    expect(screen.queryByRole('button', { name: 'Ver' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Agregar' })).toBeNull();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Ver' })[1]);
+    const open = screen.getAllByRole('button');
+    expect(open).toHaveLength(2); // uno por card
+    await userEvent.click(screen.getByRole('button', { name: 'Reflector LED 100W IP66' }));
     expect(onOpenProduct).toHaveBeenCalledWith('1102');
+  });
+
+  it('sin onOpenProduct el nombre no es interactivo', () => {
+    render(<Card card={products} />);
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('agregar no abre la ficha (el botón queda fuera del enlace)', async () => {
+    const onOpenProduct = vi.fn();
+    const onAddProducts = vi.fn();
+    const resolveProducts = vi.fn().mockResolvedValue(resolved);
+    render(<Card card={products} commerce={{ resolveProducts, onAddProducts, onOpenProduct }} />);
+    await screen.findByText('No disponible');
+    await userEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0]);
+    expect(onAddProducts).toHaveBeenCalledTimes(1);
+    expect(onOpenProduct).not.toHaveBeenCalled();
+  });
+
+  it('muestra "Cód. XXXX" solo si el producto resuelto trae sku', async () => {
+    const resolveProducts = vi.fn().mockResolvedValue([{ ...resolved[0], sku: 'ML-5065' }, resolved[1]]);
+    render(<Card card={products} commerce={{ resolveProducts }} />);
+    expect(await screen.findByText('Cód. ML-5065')).toBeInTheDocument();
+    expect(screen.getAllByText(/^Cód\./)).toHaveLength(1);
+  });
+
+  it('precio con centavos en superíndice y texto completo para lectores; entero sin centavos', async () => {
+    const resolveProducts = vi.fn().mockResolvedValue([
+      { id: '1101', name: 'Con centavos', price: 1244.07, available: true },
+      { id: '1102', name: 'Entero', price: 900, available: true },
+    ]);
+    const { container } = render(<Card card={products} commerce={{ resolveProducts }} />);
+    await screen.findByText('Con centavos');
+    expect(screen.getByText('$1.244,07')).toBeInTheDocument();
+    expect(container.querySelectorAll('.aichat-product-cents')).toHaveLength(1);
+    expect(container.querySelector('.aichat-product-cents')).toHaveTextContent('07');
+    expect(screen.getByText('$900')).toBeInTheDocument();
+  });
+
+  it('producto resuelto sin precio: Agregar deshabilitado, pero sin tag "No disponible"', async () => {
+    const resolveProducts = vi.fn().mockResolvedValue([
+      { id: '1101', name: 'Sin precio', price: 0, available: true },
+      { id: '1102', name: 'Con precio', price: 50, available: true },
+    ]);
+    render(<Card card={products} commerce={{ resolveProducts, onAddProducts: vi.fn() }} />);
+    await screen.findByText('Sin precio');
+    const [sinPrecio, conPrecio] = screen.getAllByRole('button', { name: 'Agregar' });
+    expect(sinPrecio).toBeDisabled();
+    expect(conPrecio).toBeEnabled();
+    expect(screen.queryByText('No disponible')).toBeNull();
+  });
+});
+
+describe('card products: contador de carrito', () => {
+  const items: ResolvedProduct[] = [
+    { id: '1101', name: 'Reflector A', price: 100, available: true, maxQuantity: 3 },
+    { id: '1102', name: 'Reflector B', price: 200, available: true },
+  ];
+  const setup = (cartQuantities: Record<string, number>, extra: Partial<ResolvedProduct>[] = [{}, {}]) => {
+    const onSetQuantity = vi.fn();
+    const onAddProducts = vi.fn();
+    const resolveProducts = vi.fn().mockResolvedValue(items.map((p, i) => ({ ...p, ...extra[i] })));
+    const utils = render(
+      <Card card={products} commerce={{ resolveProducts, onAddProducts, onSetQuantity, cartQuantities }} />,
+    );
+    return { onSetQuantity, onAddProducts, ...utils };
+  };
+
+  it('sin cartQuantities/onSetQuantity se comporta como 0.5.x (Agregar → Agregado)', async () => {
+    const onAddProducts = vi.fn();
+    render(<Card card={products} commerce={{ resolveProducts: vi.fn().mockResolvedValue(items), onAddProducts, cartQuantities: { '1101': 2 } }} />);
+    await screen.findByText('Reflector A');
+    expect(screen.queryByRole('button', { name: 'Agregar uno más' })).toBeNull();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0]);
+    expect(screen.getByRole('button', { name: 'Agregado' })).toBeDisabled();
+  });
+
+  it('fuera del carrito: Agregar llama onAddProducts y NO onSetQuantity, y sigue en Agregar hasta que el host actualice', async () => {
+    const { onSetQuantity, onAddProducts } = setup({});
+    await screen.findByText('Reflector A');
+    await userEvent.click(screen.getAllByRole('button', { name: 'Agregar' })[0]);
+    expect(onAddProducts).toHaveBeenCalledWith([{ id: '1101', qty: 1 }]);
+    expect(onSetQuantity).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('button', { name: 'Agregar' })).toHaveLength(2);
+  });
+
+  it('en el carrito: contador con cantidad; + y − llaman onSetQuantity; con 1 el − es el tacho y manda 0', async () => {
+    const { onSetQuantity } = setup({ '1101': 2, '1102': 1 });
+    await screen.findByText('Reflector A');
+    expect(screen.queryByRole('button', { name: 'Agregar' })).toBeNull();
+    const [dec] = screen.getAllByRole('button', { name: 'Quitar uno' });
+    const [inc] = screen.getAllByRole('button', { name: 'Agregar uno más' });
+    await userEvent.click(inc);
+    expect(onSetQuantity).toHaveBeenLastCalledWith('1101', 3);
+    await userEvent.click(dec);
+    expect(onSetQuantity).toHaveBeenLastCalledWith('1101', 1);
+    await userEvent.click(screen.getByRole('button', { name: 'Quitar del carrito' }));
+    expect(onSetQuantity).toHaveBeenLastCalledWith('1102', 0);
+  });
+
+  it('el + no pasa de maxQuantity, pero el − sigue habilitado', async () => {
+    setup({ '1101': 3 });
+    await screen.findByText('Reflector A');
+    expect(screen.getByRole('button', { name: 'Agregar uno más' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Quitar uno' })).toBeEnabled();
+  });
+
+  it('sin stock/precio: no se puede subir, sí bajar', async () => {
+    setup({ '1101': 2, '1102': 1 }, [{ available: false }, { price: 0 }]);
+    await screen.findByText('Reflector A');
+    for (const b of screen.getAllByRole('button', { name: 'Agregar uno más' })) expect(b).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Quitar uno' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Quitar del carrito' })).toBeEnabled();
+  });
+
+  it('el contador anima solo si lo provoca un clic en Agregar, no al cargar', async () => {
+    const onAddProducts = vi.fn();
+    const onSetQuantity = vi.fn();
+    const resolveProducts = vi.fn().mockResolvedValue(items);
+    const props = { resolveProducts, onAddProducts, onSetQuantity };
+    const { container, rerender } = render(<Card card={products} commerce={{ ...props, cartQuantities: { '1101': 1 } }} />);
+    await screen.findByText('Reflector A');
+    // ya estaba en el carrito al cargar: quieto
+    expect(container.querySelector('.aichat-qty')).not.toBeNull();
+    expect(container.querySelector('.aichat-qty-enter')).toBeNull();
+    // clic en Agregar de B y el host lo pone en el carrito: anima
+    await userEvent.click(screen.getByRole('button', { name: 'Agregar' }));
+    rerender(<Card card={products} commerce={{ ...props, cartQuantities: { '1101': 1, '1102': 1 } }} />);
+    expect(container.querySelectorAll('.aichat-qty')).toHaveLength(2);
+    expect(container.querySelectorAll('.aichat-qty-enter')).toHaveLength(1);
   });
 });
 

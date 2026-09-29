@@ -34,8 +34,9 @@ export interface ChatPresetProps {
   onUseMessage?: (text: string) => void;
   /** Acciones de comercio del host para las cards de venta (products, cart, handoff) del
    *  agente vendedor. Todas opt-in (ADR 0008): sin `onAddProducts` no hay "Agregar", sin
-   *  `onOpenProduct` no hay "Ver"; sin `resolveProducts` las cards muestran el label del modelo
-   *  sin precio ni foto. Contrato: platform/contracts/sales-cards/v1. Opcional. */
+   *  `onOpenProduct` la card de producto no es un enlace; sin `resolveProducts` las cards
+   *  muestran el label del modelo sin precio ni foto. Con `cartQuantities` + `onSetQuantity`
+   *  un producto que ya está en el carrito muestra el contador "− n +" en vez de "Agregar". Contrato: platform/contracts/sales-cards/v1. Opcional. */
   commerce?: CommerceCallbacks;
   /** Tema del widget. 'auto' (default) sigue la preferencia del sistema
    *  (prefers-color-scheme). Pasá 'light' o 'dark' si tu app tiene su propio switch:

@@ -55,8 +55,16 @@ export interface Labels {
   addedLabel: string;
   /** Botón de la card `cart` (requiere commerce.onAddProducts). */
   addAllLabel: string;
-  /** Botón "Ver" de una fila de `products` (requiere commerce.onOpenProduct). */
+  /** @deprecated Sin uso desde 0.6.0: la card de producto ya no tiene botón "Ver", toda la
+   *  card abre la ficha. Se mantiene para no romper a quien lo pisa. */
   viewProductLabel: string;
+  /** Prefijo de la línea de código del producto ("Cód. 1234"). */
+  codeLabel: string;
+  /** Contador de cantidad (producto en el carrito, requiere commerce.cartQuantities y
+   *  commerce.onSetQuantity): nombre del "−", del "+" y del "−" cuando queda 1 (tacho). */
+  decrementLabel: string;
+  incrementLabel: string;
+  removeLabel: string;
   /** Botón de la card `handoff`. */
   handoffLabel: string;
   /** Tag de un producto que el host resolvió con available === false. */
@@ -109,6 +117,10 @@ export const defaultLabels: Labels = {
   addedLabel: 'Agregado',
   addAllLabel: 'Agregar todo al carrito',
   viewProductLabel: 'Ver',
+  codeLabel: 'Cód.',
+  decrementLabel: 'Quitar uno',
+  incrementLabel: 'Agregar uno más',
+  removeLabel: 'Quitar del carrito',
   handoffLabel: 'Continuar por WhatsApp',
   unavailableLabel: 'No disponible',
   referenceTotalLabel: 'Total de referencia',

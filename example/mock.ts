@@ -9,11 +9,11 @@ export const MOCK_AGENTS = [
 
 // Catálogo del mock para `commerce.resolveProducts` del playground. El 1199 falta a
 // propósito: la card tiene que caer al label del modelo, sin precio ni foto.
-export const MOCK_PRODUCTS: Record<string, { name: string; brand: string; price: number; available: boolean; stock?: number; imageUrl?: string }> = {
-  '1101': { name: 'Reflector LED 50W IP65 luz fría', brand: 'Marca Demo', price: 18900, available: true, stock: 1, imageUrl: '/producto.svg' },
-  '1102': { name: 'Reflector LED 100W IP66', brand: 'Marca Demo', price: 32400, available: false, imageUrl: '/producto.svg' },
-  '3303': { name: 'Tira LED 5m luz cálida con fuente incluida', brand: 'Marca Demo', price: 12500, available: true, imageUrl: '/producto.svg' },
-  '2202': { name: 'Fotocélula 220V 10A', brand: 'Otra Marca', price: 6200, available: true, stock: 4, imageUrl: '/producto.svg' },
+export const MOCK_PRODUCTS: Record<string, { name: string; brand: string; price: number; available: boolean; stock?: number; sku?: string; maxQuantity?: number; imageUrl?: string }> = {
+  '1101': { name: 'Reflector LED 50W IP65 luz fría', brand: 'Marca Demo', price: 18900, available: true, stock: 1, sku: 'ML-5065', maxQuantity: 1, imageUrl: '/producto.svg' },
+  '1102': { name: 'Reflector LED 100W IP66', brand: 'Marca Demo', price: 32400, available: false, sku: 'ML-1002', imageUrl: '/producto.svg' },
+  '3303': { name: 'Tira LED 5m luz cálida con fuente incluida', brand: 'Marca Demo', price: 12500.5, available: true, sku: 'TL-0503', maxQuantity: 8, imageUrl: '/producto.svg' },
+  '2202': { name: 'Fotocélula 220V 10A', brand: 'Otra Marca', price: 6200, available: true, stock: 4, sku: 'FC-2210', maxQuantity: 4, imageUrl: '/producto.svg' },
 };
 
 export const MOCK_PROFILES = [
