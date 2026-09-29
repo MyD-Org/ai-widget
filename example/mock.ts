@@ -7,6 +7,14 @@ export const MOCK_AGENTS = [
   { id: 'mock-ventas', name: 'ventas (mock)' },
 ];
 
+// Catálogo del mock para `commerce.resolveProducts` del playground. El 1199 falta a
+// propósito: la card tiene que caer al label del modelo, sin precio ni foto.
+export const MOCK_PRODUCTS: Record<string, { name: string; brand: string; price: number; available: boolean }> = {
+  '1101': { name: 'Reflector LED 50W IP65 luz fría', brand: 'Marca Demo', price: 18900, available: true },
+  '1102': { name: 'Reflector LED 100W IP66', brand: 'Marca Demo', price: 32400, available: false },
+  '2202': { name: 'Fotocélula 220V 10A', brand: 'Otra Marca', price: 6200, available: true },
+};
+
 export const MOCK_PROFILES = [
   { key: 'hotel', display_name: 'Hotel Cataratas (mock)' },
   { key: 'electricista', display_name: 'Juan (mock)' },
@@ -18,8 +26,47 @@ interface Canned {
   card?: unknown;
 }
 
-// 4 mensajes que ejercitan el renderer: listas+negritas, tabla, encabezados+hr, texto+código+link.
+// Primero, el flujo del agente vendedor (cards de venta, platform ADR 0014): pregunta con
+// respuestas sugeridas → opciones → carrito → traspaso. Los ids existen en MOCK_PRODUCTS.
+// Después, 4 mensajes que ejercitan el renderer: listas+negritas, tabla, encabezados+hr,
+// texto+código+link.
 const CANNED: Canned[] = [
+  {
+    text: '¡Hola! Para recomendarte bien: ¿es para interior o exterior?',
+    card: { type: 'replies', options: ['Para interior', 'Para exterior', 'No estoy seguro'] },
+  },
+  {
+    tools: ['buscar_productos'],
+    text: 'Para exterior te recomiendo estas dos:',
+    card: {
+      type: 'products',
+      items: [
+        { id: '1101', label: 'Reflector LED 50W IP65', reason: 'Apto intemperie, ideal para un patio chico' },
+        { id: '1102', label: 'Reflector LED 100W IP66', reason: 'Más potencia para patios grandes' },
+        { id: '1199', label: 'Reflector solar 30W', reason: 'Sin cableado' },
+      ],
+    },
+  },
+  {
+    text: 'Te armé el pedido. ¿Te lo dejo en el carrito?',
+    card: {
+      type: 'cart',
+      title: 'Tu pedido',
+      lines: [
+        { id: '1101', label: 'Reflector LED 50W IP65', qty: 4 },
+        { id: '2202', label: 'Fotocélula 220V', qty: 4 },
+      ],
+    },
+  },
+  {
+    text: 'Para un precio por volumen te conviene hablar con un asesor:',
+    card: {
+      type: 'handoff',
+      channel: 'whatsapp',
+      phone: '5491100000000',
+      summary: 'Consulta por precio mayorista para 40 reflectores LED 50W IP65.',
+    },
+  },
   {
     text: `¡Hola! 👋 Para ayudarte con el **living**, contame un poco más:
 

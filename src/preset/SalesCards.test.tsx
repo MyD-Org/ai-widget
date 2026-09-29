@@ -92,6 +92,22 @@ describe('card products', () => {
     expect(screen.getByRole('button', { name: 'Agregar' })).toBe(second);
   });
 
+  it('un id que falta en una respuesta completa queda "No disponible"; si el host falla, Agregar sigue', async () => {
+    const onAddProducts = vi.fn();
+    const soloUno = vi.fn().mockResolvedValue([resolved[0]]);
+    const { unmount } = render(<Card card={products} commerce={{ resolveProducts: soloUno, onAddProducts }} />);
+    await screen.findByText('No disponible');
+    const [, faltante] = screen.getAllByRole('button', { name: 'Agregar' });
+    expect(faltante).toBeDisabled();
+    unmount();
+
+    const falla = vi.fn().mockRejectedValue(new Error('500'));
+    render(<Card card={products} commerce={{ resolveProducts: falla, onAddProducts }} />);
+    await waitFor(() => expect(falla).toHaveBeenCalled());
+    await act(async () => {});
+    for (const b of screen.getAllByRole('button', { name: 'Agregar' })) expect(b).toBeEnabled();
+  });
+
   it('Ver solo con onOpenProduct, y recibe el id', async () => {
     const onOpenProduct = vi.fn();
     render(<Card card={products} commerce={{ onOpenProduct }} />);

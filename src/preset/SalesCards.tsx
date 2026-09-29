@@ -44,12 +44,14 @@ function displayPrice(p?: ResolvedProduct): number | undefined {
 export function useResolvedProducts(
   ids: string[],
   resolveProducts?: ResolveFn,
-): { products: Map<string, ResolvedProduct>; loading: boolean } {
+): { products: Map<string, ResolvedProduct>; loading: boolean; complete: boolean } {
   const key = JSON.stringify(ids);
   const fnRef = useRef(resolveProducts);
   fnRef.current = resolveProducts;
   const hasResolver = typeof resolveProducts === 'function';
-  const [state, setState] = useState<{ key: string; products: Map<string, ResolvedProduct> } | null>(null);
+  // `ok`: el host respondió (aunque sea sin algunos ids). Distingue "no lo encontró" (el producto
+  // no se vende) de "falló la consulta" (no sabemos nada y no hay que bloquear el botón).
+  const [state, setState] = useState<{ key: string; products: Map<string, ResolvedProduct>; ok: boolean } | null>(null);
 
   useEffect(() => {
     const fn = fnRef.current;
@@ -57,19 +59,20 @@ export function useResolvedProducts(
     const requested = JSON.parse(key) as string[];
     if (requested.length === 0) return;
     let cancelled = false;
-    const done = (products: Map<string, ResolvedProduct>) => {
-      if (!cancelled) setState({ key, products });
+    const done = (products: Map<string, ResolvedProduct>, ok: boolean) => {
+      if (!cancelled) setState({ key, products, ok });
     };
     let pending: Promise<ResolvedProduct[]>;
     try {
       pending = Promise.resolve(fn(requested));
-    } catch {
-      pending = Promise.resolve([]);
+    } catch (err) {
+      pending = Promise.reject(err);
     }
     pending
       .then((list) => {
         const products = new Map<string, ResolvedProduct>();
-        if (Array.isArray(list)) {
+        if (!Array.isArray(list)) return done(products, false);
+        {
           for (const p of list) {
             // El host puede devolver el id como número (ids de Alegra): normalizamos a string,
             // que es como viaja en la card.
@@ -78,16 +81,21 @@ export function useResolvedProducts(
             }
           }
         }
-        done(products);
+        done(products, true);
       })
-      .catch(() => done(new Map()));
+      .catch(() => done(new Map(), false));
     return () => {
       cancelled = true;
     };
   }, [key, hasResolver]);
 
-  const resolved = state?.key === key ? state.products : EMPTY;
-  return { products: resolved, loading: hasResolver && state?.key !== key };
+  const current = state?.key === key ? state : null;
+  return {
+    products: current?.products ?? EMPTY,
+    loading: hasResolver && !current,
+    // Respuesta completa del host: un id que no vino es un producto que no se vende.
+    complete: current?.ok === true,
+  };
 }
 
 const EMPTY: Map<string, ResolvedProduct> = new Map();
@@ -102,7 +110,7 @@ function CardTitle({ title }: { title?: string }) {
 }
 
 function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce?: CommerceCallbacks; labels: Labels }) {
-  const { products, loading } = useResolvedProducts(
+  const { products, loading, complete } = useResolvedProducts(
     card.items.map((i) => i.id),
     commerce?.resolveProducts,
   );
@@ -120,7 +128,9 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
           const name = p?.name || item.label;
           const img = safeImageSrc(p?.imageUrl);
           const price = displayPrice(p);
-          const unavailable = p?.available === false;
+          // Sin el producto en una respuesta completa del host, "Agregar" no haría nada (el
+          // Shop no puede cargar algo que no vende): se muestra como no disponible.
+          const unavailable = p?.available === false || (complete && !p);
           const isAdded = added.has(i);
           return (
             <div key={i} className="aichat-product">
