@@ -61,6 +61,14 @@ export interface Labels {
   handoffLabel: string;
   /** Tag de un producto que el host resolvió con available === false. */
   unavailableLabel: string;
+  /** Nombre accesible del carrusel cuando el agente recomienda varios productos. */
+  carouselLabel: string;
+  carouselPrev: string;
+  carouselNext: string;
+  /** Aviso de stock bajo (1 a 5 unidades, si el host informa `stock`). */
+  stockOneLabel: string;
+  /** Idem para 2 a 5; `{n}` se reemplaza por la cantidad. */
+  stockFewLabel: string;
   /** Fila de total de la card `cart` (solo si todas las líneas tienen precio resuelto). */
   referenceTotalLabel: string;
 }
@@ -104,6 +112,11 @@ export const defaultLabels: Labels = {
   handoffLabel: 'Continuar por WhatsApp',
   unavailableLabel: 'No disponible',
   referenceTotalLabel: 'Total de referencia',
+  carouselLabel: 'Productos recomendados',
+  carouselPrev: 'Ver anteriores',
+  carouselNext: 'Ver siguientes',
+  stockOneLabel: 'Queda 1',
+  stockFewLabel: 'Quedan {n}',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {

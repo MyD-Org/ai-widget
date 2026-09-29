@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Card } from './Card';
 import { budgetCardToPlainText } from './budgetSerializer';
-import type { BudgetCard } from '../types';
+import type { BudgetCard, ProductsCard, ResolvedProduct } from '../types';
+import { defaultLabels } from './labels';
 
 const budget: BudgetCard = {
   type: 'budget',
@@ -157,5 +158,49 @@ describe('Card (budget) copy/send actions', () => {
     expect(pdf).toHaveAttribute('href', 'https://x/p.pdf');
     expect(pdf).toHaveAttribute('target', '_blank');
     expect(screen.getByRole('button', { name: /Copiar/ })).toBeInTheDocument();
+  });
+});
+
+describe('card de producto (estilo catálogo)', () => {
+  const two: ProductsCard = {
+    type: 'products',
+    items: [
+      { id: 'a', label: 'Reflector A' },
+      { id: 'b', label: 'Reflector B' },
+    ],
+  };
+  const one: ProductsCard = { type: 'products', items: [{ id: 'a', label: 'Reflector A' }] };
+  const res = (o: Partial<ResolvedProduct> = {}) =>
+    vi.fn().mockResolvedValue([
+      { id: 'a', name: 'Reflector A', brand: 'Macroled', price: 18900, available: true, ...o },
+      { id: 'b', name: 'Reflector B', price: 100, available: true },
+    ]);
+
+  it('muestra marca, nombre, precio y botones Agregar/Ver por producto', async () => {
+    render(<Card card={two} commerce={{ resolveProducts: res(), onAddProducts: vi.fn(), onOpenProduct: vi.fn() }} />);
+    expect(await screen.findByText('Macroled')).toBeInTheDocument();
+    expect(screen.getByText(/18\.900/)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Agregar' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Ver' })).toHaveLength(2);
+  });
+
+  it('avisa "Queda 1" / "Quedan 3" solo con stock 1 a 5, y no sin dato ni con stock alto', async () => {
+    const { unmount } = render(<Card card={one} commerce={{ resolveProducts: res({ stock: 1 }) }} />);
+    expect(await screen.findByText('Queda 1')).toBeInTheDocument();
+    unmount();
+    const r2 = render(<Card card={one} commerce={{ resolveProducts: res({ stock: 3 }) }} />);
+    expect(await screen.findByText('Quedan 3')).toBeInTheDocument();
+    r2.unmount();
+    render(<Card card={one} commerce={{ resolveProducts: res({ stock: 40 }) }} />);
+    await screen.findByText('Macroled');
+    expect(screen.queryByText(/Queda/)).toBeNull();
+  });
+
+  it('con un solo producto no hay carrusel; con varios sí, con nombre accesible', () => {
+    const { unmount } = render(<Card card={one} />);
+    expect(screen.queryByRole('region')).toBeNull();
+    unmount();
+    render(<Card card={two} labels={{ ...defaultLabels, carouselLabel: 'Productos sugeridos' }} />);
+    expect(screen.getByRole('region', { name: 'Productos sugeridos' })).toBeInTheDocument();
   });
 });
