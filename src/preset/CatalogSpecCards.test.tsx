@@ -6,6 +6,7 @@ import { Card } from './Card';
 import type { CatalogCard, ResolvedProduct, SpecCard } from '../types';
 import catalogFx from './__fixtures__/sales-cards/catalog.json';
 import specFx from './__fixtures__/sales-cards/spec.json';
+import { SheetContext } from './sheetContext';
 
 // Fixtures copiadas del contrato (platform/contracts/sales-cards/v1).
 const catalog = catalogFx as CatalogCard;
@@ -43,6 +44,55 @@ describe('card catalog', () => {
     expect(screen.getByText(SUGGESTED)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ver en el catálogo' })).toBeInTheDocument();
     expect(onNavigateCatalog).toHaveBeenCalledTimes(1);
+  });
+
+  it('avisa a la hoja mobile solo cuando navega sola, una vez (no con el botón)', async () => {
+    const onCatalogAutoNavigated = vi.fn();
+    const onNavigateCatalog = vi.fn().mockReturnValue(undefined);
+    const card = freshCatalog();
+    const ctx = { onCatalogAutoNavigated };
+    const { rerender } = render(
+      <StrictMode>
+        <SheetContext.Provider value={ctx}>
+          <Card card={card} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => true }} />
+        </SheetContext.Provider>
+      </StrictMode>,
+    );
+    await screen.findByText(APPLIED);
+    rerender(
+      <StrictMode>
+        <SheetContext.Provider value={ctx}>
+          <Card card={card} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => true }} />
+        </SheetContext.Provider>
+      </StrictMode>,
+    );
+    expect(onCatalogAutoNavigated).toHaveBeenCalledTimes(1);
+    expect(onCatalogAutoNavigated).toHaveBeenCalledWith(catalog.summary);
+
+    // Card sin permiso de navegar sola: el botón navega pero no minimiza la hoja.
+    const manual = vi.fn();
+    render(
+      <SheetContext.Provider value={{ onCatalogAutoNavigated: manual }}>
+        <Card card={freshCatalog()} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => false }} />
+      </SheetContext.Provider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Ver en el catálogo' }));
+    expect(manual).not.toHaveBeenCalled();
+  });
+
+  it('si el host falla al navegar, no avisa a la hoja', async () => {
+    const onCatalogAutoNavigated = vi.fn();
+    const onNavigateCatalog = vi.fn(() => {
+      throw new Error('nope');
+    });
+    render(
+      <SheetContext.Provider value={{ onCatalogAutoNavigated }}>
+        <Card card={freshCatalog()} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => true }} />
+      </SheetContext.Provider>,
+    );
+    await act(async () => {});
+    expect(onNavigateCatalog).toHaveBeenCalledTimes(1);
+    expect(onCatalogAutoNavigated).not.toHaveBeenCalled();
   });
 
   it('la misma card montada de nuevo no vuelve a navegar sola', async () => {

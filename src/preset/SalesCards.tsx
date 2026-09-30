@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import type {
   CartCard,
   CatalogCard,
@@ -15,6 +15,7 @@ import { formatArs } from './budgetSerializer';
 import { ProductCarousel } from './ProductCarousel';
 import { CartIcon, CheckIcon, ProductPrice, QuantityStepper } from './ProductParts';
 import { safeHttpUrl } from './safeUrl';
+import { SheetContext } from './sheetContext';
 
 type ResolveFn = CommerceCallbacks['resolveProducts'];
 
@@ -439,18 +440,23 @@ function CatalogBody({
   const [undo, setUndo] = useState<(() => void) | null>(null);
   const decided = useRef(false);
 
-  const navigate = useCallback(() => {
+  const sheet = useContext(SheetContext);
+  const sheetRef = useRef(sheet);
+  sheetRef.current = sheet;
+
+  const navigate = useCallback((): boolean => {
     const fn = commerceRef.current?.onNavigateCatalog;
-    if (!fn) return;
+    if (!fn) return false;
     let result: { undo?: () => void } | void;
     try {
       result = fn(card.filters ?? {}, card);
     } catch {
-      return; // el host no pudo navegar: queda el botón para reintentar
+      return false; // el host no pudo navegar: queda el botón para reintentar
     }
     const u = result && typeof result.undo === 'function' ? result.undo : null;
     setApplied(true);
     setUndo(() => u);
+    return true;
   }, [card]);
 
   // Navegación automática: una sola vez por card, solo en vivo y solo si el host lo permite
@@ -469,7 +475,9 @@ function CatalogBody({
     }
     if (!auto) return;
     autoNavigated.add(card);
-    navigate();
+    // En la hoja mobile, la navegación automática deja ver el catálogo detrás (pasa a "peek").
+    // Va adentro de este bloque para heredar el "una sola vez por card".
+    if (navigate()) sheetRef.current?.onCatalogAutoNavigated(typeof card.summary === 'string' ? card.summary : '');
   }, [card, live, navigate]);
 
   const summary = typeof card.summary === 'string' ? card.summary : '';
@@ -505,7 +513,7 @@ function CatalogBody({
     <div className="aichat-catalog">
       <span className="aichat-catalog-text">{labels.catalogSuggestedLabel.replace('{summary}', summary)}</span>
       {canNavigate && (
-        <button type="button" className="aichat-catalog-btn" onClick={navigate}>
+        <button type="button" className="aichat-catalog-btn" onClick={() => navigate()}>
           {labels.catalogViewLabel}
         </button>
       )}
