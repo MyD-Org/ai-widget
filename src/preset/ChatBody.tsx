@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useConversation } from '../hooks/useConversation';
 import { labelForError, type Labels } from './labels';
 import { Markdown } from './Markdown';
@@ -7,11 +7,40 @@ import { Card } from './Card';
 import { ConversationMenu } from './ConversationMenu';
 import type { Branding } from './branding';
 import type { BudgetCard, CommerceCallbacks } from '../types';
+import { oneLine, useVerticalDrag, type ChatPresentation } from './mobile';
 
 /** Mensaje que el host pide enviar en nombre del usuario (ChatDrawer `sendRequest`). */
 export interface ChatRequest {
   id: string;
   text: string;
+}
+
+/** Controles de la hoja mobile que el ChatDrawer le pasa al cuerpo. */
+export interface SheetControls {
+  presentation: ChatPresentation;
+  onMinimize: () => void;
+  onExpand: () => void;
+  onClose: () => void;
+  /** Aviso de la barra minimizada en lugar del último mensaje ("Filtros aplicados: …"). Con
+   *  aviso, la barra suma "Ver resultados" (`onViewResults`). */
+  notice: string | null;
+  onViewResults: () => void;
+}
+
+function ChevronIcon({ dir }: { dir: 'up' | 'down' }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {dir === 'down' ? <path d="m6 9 6 6 6-6" /> : <path d="m18 15-6-6-6 6" />}
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
 }
 
 function HistoryIcon() {
@@ -44,6 +73,7 @@ export function ChatBody({
   commerce,
   pendingRequest,
   onRequestSent,
+  sheet,
 }: {
   branding?: Branding;
   labels: Labels;
@@ -63,6 +93,8 @@ export function ChatBody({
   pendingRequest?: ChatRequest | null;
   /** Avisa que el pedido ya se envió, para que el dueño del estado lo descarte. */
   onRequestSent?: (id: string) => void;
+  /** Hoja mobile: cabecera con Minimizar/Cerrar y arrastre, y barra minimizada ("peek"). */
+  sheet?: SheetControls;
 }) {
   const {
     messages,
@@ -87,6 +119,18 @@ export function ChatBody({
   // Si el usuario scrolleó hacia arriba, dejamos de autoscrollear para no "tironearlo" al fondo
   // en cada token del streaming. Vuelve a pegarse al fondo si baja hasta el final.
   const stickToBottom = useRef(true);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const peekTextId = useId();
+  const peek = sheet?.presentation === 'peek';
+  // Bajar la cabecera minimiza; subir la barra expande. Los handlers van solo en la cabecera y
+  // en la barra: el scroll de la lista de mensajes no los dispara.
+  const headerDrag = useVerticalDrag({
+    dir: 1,
+    threshold: 80,
+    onCommit: () => sheet?.onMinimize(),
+    targetRef: panelRef,
+  });
+  const peekDrag = useVerticalDrag({ dir: -1, threshold: 40, onCommit: () => sheet?.onExpand() });
 
   const copyMessage = (id: string, text: string) => {
     // Formato WhatsApp para no dejar los `**` crudos ni aplanar el formato: aplica igual sea que
@@ -130,6 +174,22 @@ export function ChatBody({
     const el = logRef.current;
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
   }, [messages, streaming, activity]);
+
+  // Si el log cambia de alto (se abre el teclado, vuelve de la barra minimizada) y el usuario
+  // estaba al fondo, lo mantenemos al fondo: el último mensaje queda a la vista.
+  useEffect(() => {
+    const el = logRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    const el = logRef.current;
+    if (el && !peek && stickToBottom.current) el.scrollTop = el.scrollHeight;
+  }, [peek]);
 
   // En cada scroll recalculamos si sigue "pegado" al fondo (con un margen de 80px de tolerancia).
   const onLogScroll = () => {
@@ -186,9 +246,14 @@ export function ChatBody({
     }
   };
 
+  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant' && m.text.trim() !== '');
+  const peekText = sheet?.notice ?? (lastAssistant ? oneLine(lastAssistant.text) : labels.peekEmptyLabel);
+
   return (
-    <div className="aichat-panel">
-      <div className="aichat-header">
+    <>
+    <div className="aichat-panel" ref={panelRef} hidden={peek}>
+      <div className={`aichat-header ${sheet ? 'aichat-header-sheet' : ''}`} {...(sheet ? headerDrag : {})}>
+        {sheet && <span className="aichat-grabber" aria-hidden="true" />}
         {branding?.avatarUrl ? (
           <img className="aichat-avatar" src={branding.avatarUrl} alt="" />
         ) : (
@@ -203,7 +268,7 @@ export function ChatBody({
             {branding?.subtitle ?? labels.statusOnline}
           </span>
         </div>
-        {(onToggleExpand || enableHistory) && (
+        {(onToggleExpand || enableHistory || sheet) && (
           <div className="aichat-header-actions">
             {enableHistory && (
               <button
@@ -219,7 +284,29 @@ export function ChatBody({
                 <HistoryIcon />
               </button>
             )}
-            {onToggleExpand && (
+            {sheet && (
+              <>
+                <button
+                  type="button"
+                  className="aichat-new aichat-minimize"
+                  onClick={sheet.onMinimize}
+                  aria-label={labels.minimizeLabel}
+                  title={labels.minimizeLabel}
+                >
+                  <ChevronIcon dir="down" />
+                </button>
+                <button
+                  type="button"
+                  className="aichat-new aichat-close"
+                  onClick={sheet.onClose}
+                  aria-label={labels.closeLabel}
+                  title={labels.closeLabel}
+                >
+                  <CloseIcon />
+                </button>
+              </>
+            )}
+            {onToggleExpand && !sheet && (
               <button
                 type="button"
                 className="aichat-new aichat-expand"
@@ -357,6 +444,14 @@ export function ChatBody({
           placeholder={labels.placeholder}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
+          enterKeyHint="send"
+          onFocus={() => {
+            // Con el teclado abriéndose, el último mensaje queda a la vista.
+            if (!sheet) return;
+            stickToBottom.current = true;
+            const el = logRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+          }}
         />
         <button
           className="aichat-send"
@@ -368,5 +463,36 @@ export function ChatBody({
         </button>
       </form>
     </div>
+    {sheet && peek && (
+      <div className="aichat-peek" role="region" aria-label={title} {...peekDrag}>
+        <button
+          type="button"
+          className="aichat-peek-main"
+          onClick={sheet.onExpand}
+          aria-label={labels.peekExpandLabel}
+          aria-describedby={peekTextId}
+        >
+          <span className="aichat-peek-text" id={peekTextId}>
+            {peekText}
+          </span>
+          <ChevronIcon dir="up" />
+        </button>
+        {sheet.notice !== null && (
+          <button type="button" className="aichat-peek-results" onClick={sheet.onViewResults}>
+            {labels.peekResultsLabel}
+          </button>
+        )}
+        <button
+          type="button"
+          className="aichat-new aichat-close"
+          onClick={sheet.onClose}
+          aria-label={labels.closeLabel}
+          title={labels.closeLabel}
+        >
+          <CloseIcon />
+        </button>
+      </div>
+    )}
+    </>
   );
 }

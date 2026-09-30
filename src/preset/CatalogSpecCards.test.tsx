@@ -6,6 +6,7 @@ import { Card } from './Card';
 import type { CatalogCard, ResolvedProduct, SpecCard } from '../types';
 import catalogFx from './__fixtures__/sales-cards/catalog.json';
 import specFx from './__fixtures__/sales-cards/spec.json';
+import { SheetContext } from './sheetContext';
 
 // Fixtures copiadas del contrato (platform/contracts/sales-cards/v1).
 const catalog = catalogFx as CatalogCard;
@@ -43,6 +44,72 @@ describe('card catalog', () => {
     expect(screen.getByText(SUGGESTED)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ver en el catálogo' })).toBeInTheDocument();
     expect(onNavigateCatalog).toHaveBeenCalledTimes(1);
+  });
+
+  it('avisa a la hoja mobile al navegar sola (una vez) y con el botón', async () => {
+    const onHostNavigated = vi.fn();
+    const onNavigateCatalog = vi.fn().mockReturnValue(undefined);
+    const card = freshCatalog();
+    const ctx = { onHostNavigated };
+    const { rerender } = render(
+      <StrictMode>
+        <SheetContext.Provider value={ctx}>
+          <Card card={card} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => true }} />
+        </SheetContext.Provider>
+      </StrictMode>,
+    );
+    await screen.findByText(APPLIED);
+    rerender(
+      <StrictMode>
+        <SheetContext.Provider value={ctx}>
+          <Card card={card} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => true }} />
+        </SheetContext.Provider>
+      </StrictMode>,
+    );
+    expect(onHostNavigated).toHaveBeenCalledTimes(1);
+    expect(onHostNavigated).toHaveBeenCalledWith({ catalogSummary: catalog.summary });
+
+    const manual = vi.fn();
+    render(
+      <SheetContext.Provider value={{ onHostNavigated: manual }}>
+        <Card card={freshCatalog()} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => false }} />
+      </SheetContext.Provider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Ver en el catálogo' }));
+    expect(manual).toHaveBeenCalledWith({ catalogSummary: catalog.summary });
+  });
+
+  it('abrir un producto (products o spec) avisa a la hoja sin aviso de filtros', async () => {
+    const onHostNavigated = vi.fn();
+    const onOpenProduct = vi.fn();
+    render(
+      <SheetContext.Provider value={{ onHostNavigated }}>
+        <Card card={{ type: 'products', items: [{ id: 'p1', label: 'Reflector' }] }} commerce={{ onOpenProduct }} />
+        <Card card={spec} commerce={{ onOpenProduct }} />
+      </SheetContext.Provider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Reflector' }));
+    expect(onOpenProduct).toHaveBeenLastCalledWith('p1');
+    expect(onHostNavigated).toHaveBeenCalledTimes(1);
+    expect(onHostNavigated).toHaveBeenLastCalledWith();
+    await userEvent.click(screen.getByRole('button', { name: 'Ver producto' }));
+    expect(onOpenProduct).toHaveBeenLastCalledWith(spec.id);
+    expect(onHostNavigated).toHaveBeenCalledTimes(2);
+  });
+
+  it('si el host falla al navegar, no avisa a la hoja', async () => {
+    const onHostNavigated = vi.fn();
+    const onNavigateCatalog = vi.fn(() => {
+      throw new Error('nope');
+    });
+    render(
+      <SheetContext.Provider value={{ onHostNavigated }}>
+        <Card card={freshCatalog()} live commerce={{ onNavigateCatalog, shouldAutoNavigate: () => true }} />
+      </SheetContext.Provider>,
+    );
+    await act(async () => {});
+    expect(onNavigateCatalog).toHaveBeenCalledTimes(1);
+    expect(onHostNavigated).not.toHaveBeenCalled();
   });
 
   it('la misma card montada de nuevo no vuelve a navegar sola', async () => {

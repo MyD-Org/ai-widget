@@ -91,6 +91,17 @@ export interface Labels {
   specAttributesLabel: string;
   /** Tag de un producto que el host resolvió con available === true (card `spec`). */
   availableLabel: string;
+  // Hoja mobile (ChatDrawer por debajo de `mobileBreakpoint`).
+  /** Botón de la cabecera que minimiza la hoja a la barra inferior. */
+  minimizeLabel: string;
+  /** Botón que cierra el chat (cabecera de la hoja y barra minimizada). */
+  closeLabel: string;
+  /** Nombre accesible de la barra minimizada, que al tocarla vuelve a abrir la hoja. */
+  peekExpandLabel: string;
+  /** Texto de la barra minimizada cuando todavía no hay respuestas del asistente. */
+  peekEmptyLabel: string;
+  /** Botón de la barra minimizada tras aplicar filtros del catálogo: cierra el chat. */
+  peekResultsLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -148,6 +159,11 @@ export const defaultLabels: Labels = {
   specSheetLabel: 'Ficha técnica (PDF)',
   specAttributesLabel: 'Características',
   availableLabel: 'Disponible',
+  minimizeLabel: 'Minimizar',
+  closeLabel: 'Cerrar',
+  peekExpandLabel: 'Abrir la conversación',
+  peekEmptyLabel: 'Continuar la conversación',
+  peekResultsLabel: 'Ver resultados',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {
