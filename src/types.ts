@@ -61,7 +61,38 @@ export interface HandoffCard {
   summary: string;
 }
 
-export type SalesCard = ProductsCard | CartCard | RepliesCard | HandoffCard;
+/** Filtros del catálogo que propone el agente. Son ids (categorías, marcas, atributos) que el
+ *  host valida con su propio parser de URL antes de navegar: lo inválido se descarta. */
+export interface CatalogFilters {
+  q?: string;
+  categories?: string[];
+  brands?: string[];
+  attributes?: string[];
+  price_min?: number;
+  price_max?: number;
+  sort?: 'relevancia' | 'nombre' | 'precio-asc' | 'precio-desc';
+  in_stock_only?: boolean;
+}
+
+/** El agente filtra el catálogo del host (tool `navigate_catalog`). La URL la arma el host. */
+export interface CatalogCard {
+  type: 'catalog';
+  /** Resumen legible de los filtros ("Reflectores · Luz cálida"), lo escribe el modelo. */
+  summary: string;
+  filters: CatalogFilters;
+}
+
+/** Ficha de un producto (tool `show_spec`). Como `products`, lleva id y label de respaldo: los
+ *  datos comerciales, atributos y PDF los resuelve el host. */
+export interface SpecCard {
+  type: 'spec';
+  id: string;
+  label: string;
+  /** Nota del asesor: por qué este producto. */
+  reason?: string;
+}
+
+export type SalesCard = ProductsCard | CartCard | RepliesCard | HandoffCard | CatalogCard | SpecCard;
 
 export type Card = BudgetCard | SalesCard;
 
@@ -80,6 +111,12 @@ export interface ResolvedProduct {
   sku?: string;
   /** Tope del contador de cantidad. Sin valor, se usa `stock` si el host lo informó. */
   maxQuantity?: number;
+  /** Código del producto (card `spec`). Si falta, se usa `sku`. */
+  code?: string;
+  /** Atributos visibles ("Luz cálida", "Apto exterior") que detecta el host (card `spec`). */
+  attributes?: string[];
+  /** PDF de la ficha técnica (card `spec`): se abre en una pestaña nueva. */
+  specUrl?: string;
 }
 
 /** Acciones de comercio del host para las cards de venta. Todas opcionales (ADR 0008): sin el
@@ -100,6 +137,12 @@ export interface CommerceCallbacks {
   onSetQuantity?: (id: string, qty: number) => void;
   /** "Continuar por WhatsApp". Sin callback, la card abre `wa.me` con el resumen. */
   onHandoff?: (card: HandoffCard) => void;
+  /** Card `catalog`: el host arma la URL con su parser (descarta lo inválido) y navega. Puede
+   *  devolver `{ undo }` para que la card ofrezca "Deshacer". Sin callback, la card es solo texto. */
+  onNavigateCatalog?: (filters: CatalogFilters, card: CatalogCard) => { undo?: () => void } | void;
+  /** ¿Puede una card `catalog` llegada en vivo navegar sola ahora? (p.ej. usuario en el catálogo
+   *  con el chat acoplado). Sin callback o con `false`, la card ofrece "Ver en el catálogo". */
+  shouldAutoNavigate?: () => boolean;
 }
 
 export interface Message {
@@ -108,6 +151,9 @@ export interface Message {
   text: string;
   created_at?: string;
   card?: Card;
+  /** true si el mensaje se armó con eventos SSE de esta sesión (no vino del historial). La card
+   *  `catalog` solo navega sola cuando es en vivo. */
+  live?: boolean;
 }
 
 /** Resumen de conversación que devuelve GET /v1/conversations (todas las del end-user en el
