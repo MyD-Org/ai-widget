@@ -294,6 +294,7 @@ export function ChatBody({
                   commerce={commerce}
                   onReply={isReplies ? send : undefined}
                   labels={labels}
+                  live={m.live === true}
                 />
               )}
             </Fragment>

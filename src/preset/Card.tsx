@@ -3,19 +3,7 @@ import type { Card as CardType, CardAction, BudgetCard, CommerceCallbacks } from
 import { budgetCardToPlainText, budgetTotal, formatArs } from './budgetSerializer';
 import { defaultLabels, type Labels } from './labels';
 import { SalesCard } from './SalesCards';
-
-// Defensa XSS: solo dejamos pasar esquemas seguros (evita href="javascript:…").
-const SAFE_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']);
-function safeHref(url?: string): string | undefined {
-  if (!url) return undefined;
-  const base = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
-  try {
-    const u = new URL(url, base);
-    return SAFE_SCHEMES.has(u.protocol) ? u.toString() : undefined;
-  } catch {
-    return undefined;
-  }
-}
+import { safeHref } from './safeUrl';
 
 // Una acción sin `kind` es un link (retrocompat).
 function actionKind(a: CardAction): 'link' | 'copy' | 'send' {
@@ -209,6 +197,7 @@ export function Card({
   commerce,
   onReply,
   labels = defaultLabels,
+  live = false,
 }: {
   card: CardType;
   onSendToChannel?: (text: string) => void;
@@ -221,9 +210,12 @@ export function Card({
   onReply?: (text: string) => void;
   /** Textos de las cards de venta. */
   labels?: Labels;
+  /** La card llegó en vivo por SSE en esta sesión (no del historial). Solo así una card
+   *  `catalog` puede navegar sola. */
+  live?: boolean;
 }) {
   if (card.type !== 'budget') {
-    return <SalesCard card={card} commerce={commerce} onReply={onReply} labels={labels} />;
+    return <SalesCard card={card} commerce={commerce} onReply={onReply} labels={labels} live={live} />;
   }
   return (
     <div className="aichat-card">

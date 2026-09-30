@@ -1,33 +1,26 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type {
   CartCard,
+  CatalogCard,
   CommerceCallbacks,
   HandoffCard,
   ProductsCard,
   RepliesCard,
   ResolvedProduct,
   SalesCard as SalesCardType,
+  SpecCard,
 } from '../types';
 import type { Labels } from './labels';
 import { formatArs } from './budgetSerializer';
 import { ProductCarousel } from './ProductCarousel';
-import { CartIcon, ProductPrice, QuantityStepper } from './ProductParts';
+import { CartIcon, CheckIcon, ProductPrice, QuantityStepper } from './ProductParts';
+import { safeHttpUrl } from './safeUrl';
 
 type ResolveFn = CommerceCallbacks['resolveProducts'];
 
 // La foto la manda el host, pero igual filtramos el esquema: una card no debería poder colar
 // un `javascript:` o un `data:` arbitrario en el DOM aunque el host tenga un bug.
-const SAFE_IMG_SCHEMES = new Set(['http:', 'https:']);
-function safeImageSrc(url?: string): string | undefined {
-  if (!url) return undefined;
-  const base = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
-  try {
-    const u = new URL(url, base);
-    return SAFE_IMG_SCHEMES.has(u.protocol) ? u.toString() : undefined;
-  } catch {
-    return undefined;
-  }
-}
+const safeImageSrc = safeHttpUrl;
 
 // Precio "exhibible": solo un número finito > 0. Un $0 es un producto sin precio en la lista de
 // quien mira (el Shop ni lo deja entrar al carrito), no un regalo: se trata como no resuelto.
@@ -117,21 +110,76 @@ function stockNote(stock: number | undefined, labels: Labels): string | undefine
   return stock === 1 ? labels.stockOneLabel : labels.stockFewLabel.replace('{n}', String(stock));
 }
 
+function maxQuantity(p?: ResolvedProduct): number | undefined {
+  return typeof p?.maxQuantity === 'number' ? p.maxQuantity : typeof p?.stock === 'number' ? p.stock : undefined;
+}
+
+// "Agregar" / contador de cantidad de UN producto (cards `products` y `spec`). "Agregado" es por
+// producto y solo aplica cuando el host no informa el carrito (`cartQuantities`): con carrito,
+// el botón pasa al contador. Sin `onAddProducts` no se dibuja nada (ADR 0008).
+function ProductAddControl({
+  id,
+  product,
+  unavailable,
+  nameId,
+  commerce,
+  labels,
+}: {
+  id: string;
+  product?: ResolvedProduct;
+  unavailable: boolean;
+  nameId: string;
+  commerce?: CommerceCallbacks;
+  labels: Labels;
+}) {
+  const [added, setAdded] = useState(false);
+  // Solo se anima la aparición del contador cuando la provoca un clic acá.
+  const [justAdded, setJustAdded] = useState(false);
+  const onAdd = commerce?.onAddProducts;
+  if (!onAdd) return null;
+  const onSetQuantity = commerce?.onSetQuantity;
+  const cartQuantities = commerce?.cartQuantities;
+  const inCart = cartQuantities?.[id] ?? 0;
+  const showStepper = Boolean(onSetQuantity) && inCart > 0;
+  return (
+    <div className="aichat-product-actions">
+      {showStepper ? (
+        <QuantityStepper
+          qty={inCart}
+          max={maxQuantity(product)}
+          disabled={unavailable}
+          animate={justAdded}
+          labels={labels}
+          describedBy={nameId}
+          onChange={(n) => onSetQuantity?.(id, Math.max(0, n))}
+        />
+      ) : (
+        <button
+          type="button"
+          className="aichat-add"
+          aria-describedby={nameId}
+          disabled={unavailable || (!cartQuantities && added)}
+          onClick={() => {
+            onAdd([{ id, qty: 1 }]);
+            setAdded(true);
+            setJustAdded(true);
+          }}
+        >
+          <CartIcon />
+          {!cartQuantities && added ? labels.addedLabel : labels.addLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce?: CommerceCallbacks; labels: Labels }) {
   const { products, loading, complete } = useResolvedProducts(
     card.items.map((i) => i.id),
     commerce?.resolveProducts,
   );
   const uid = useId();
-  // "Agregado" es por producto: agregar uno no debe marcar los demás. Solo aplica cuando el host
-  // no informa el carrito (`cartQuantities`): con carrito, el botón pasa al contador.
-  const [added, setAdded] = useState<Set<number>>(() => new Set());
-  // Solo se anima la aparición del contador cuando la provoca un clic acá.
-  const [justAdded, setJustAdded] = useState<Set<number>>(() => new Set());
-  const onAdd = commerce?.onAddProducts;
   const onOpen = commerce?.onOpenProduct;
-  const onSetQuantity = commerce?.onSetQuantity;
-  const cartQuantities = commerce?.cartQuantities;
 
   const cards = card.items.map((item, i) => {
     const p = products.get(item.id);
@@ -142,10 +190,6 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
     // Shop no puede cargar algo que no vende): se muestra como no disponible.
     const unavailable = p?.available === false || (complete && !p);
     const stock = unavailable ? undefined : stockNote(p?.stock, labels);
-    const isAdded = added.has(i);
-    const inCart = cartQuantities?.[item.id] ?? 0;
-    const showStepper = Boolean(onSetQuantity) && inCart > 0;
-    const maxQty = typeof p?.maxQuantity === 'number' ? p.maxQuantity : typeof p?.stock === 'number' ? p.stock : undefined;
     const nameId = `${uid}-name-${i}`;
     return (
       <article key={i} className="aichat-product" data-clickable={onOpen ? '' : undefined}>
@@ -163,7 +207,7 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
           ) : (
             <span id={nameId} className="aichat-product-name">{name}</span>
           )}
-          {p?.sku && <span className="aichat-product-code">{labels.codeLabel} {p.sku}</span>}
+          {(p?.code || p?.sku) && <span className="aichat-product-code">{labels.codeLabel} {p?.code || p?.sku}</span>}
           {(price != null || stock) && (
             <div className="aichat-product-priceline">
               {price != null && <ProductPrice value={price} />}
@@ -171,36 +215,7 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
             </div>
           )}
           {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
-          {onAdd && (
-            <div className="aichat-product-actions">
-              {showStepper ? (
-                <QuantityStepper
-                  qty={inCart}
-                  max={maxQty}
-                  disabled={unavailable}
-                  animate={justAdded.has(i)}
-                  labels={labels}
-                  describedBy={nameId}
-                  onChange={(n) => onSetQuantity?.(item.id, Math.max(0, n))}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="aichat-add"
-                  aria-describedby={nameId}
-                  disabled={unavailable || (!cartQuantities && isAdded)}
-                  onClick={() => {
-                    onAdd([{ id: item.id, qty: 1 }]);
-                    setAdded((s) => new Set(s).add(i));
-                    setJustAdded((s) => new Set(s).add(i));
-                  }}
-                >
-                  <CartIcon />
-                  {!cartQuantities && isAdded ? labels.addedLabel : labels.addLabel}
-                </button>
-              )}
-            </div>
-          )}
+          <ProductAddControl id={item.id} product={p} unavailable={unavailable} nameId={nameId} commerce={commerce} labels={labels} />
         </div>
       </article>
     );
@@ -328,16 +343,188 @@ function HandoffBody({ card, commerce, labels }: { card: HandoffCard; commerce?:
   );
 }
 
+function SpecBody({ card, commerce, labels }: { card: SpecCard; commerce?: CommerceCallbacks; labels: Labels }) {
+  const { products, loading, complete } = useResolvedProducts([card.id], commerce?.resolveProducts);
+  const nameId = `${useId()}-name`;
+  const p = products.get(card.id);
+  const name = p?.name || card.label;
+  const img = safeImageSrc(p?.imageUrl);
+  const price = displayPrice(p);
+  // Mismo criterio que `products`: sin el producto en una respuesta completa, no se vende.
+  const unavailable = p?.available === false || (complete && !p);
+  const stock = unavailable ? undefined : stockNote(p?.stock, labels);
+  const code = p?.code || p?.sku;
+  const attributes = Array.isArray(p?.attributes)
+    ? p.attributes.filter((a): a is string => typeof a === 'string' && a.trim() !== '')
+    : [];
+  const pdf = safeHttpUrl(p?.specUrl);
+  const onOpen = commerce?.onOpenProduct;
+  return (
+    <div className="aichat-card aichat-sales aichat-spec" aria-busy={loading || undefined}>
+      <article className="aichat-product aichat-spec-product">
+        <div className="aichat-spec-top">
+          <div className="aichat-product-media aichat-spec-media">
+            {img && <img className="aichat-product-img" src={img} alt="" loading="lazy" />}
+          </div>
+          <div className="aichat-product-body aichat-spec-body">
+            {p?.brand && <span className="aichat-product-brand">{p.brand}</span>}
+            <span id={nameId} className="aichat-product-name">{name}</span>
+            {code && <span className="aichat-product-code">{labels.codeLabel} {code}</span>}
+            {(price != null || stock) && (
+              <div className="aichat-product-priceline">
+                {price != null && <ProductPrice value={price} />}
+                {stock && <span className="aichat-stock-low">{stock}</span>}
+              </div>
+            )}
+            {unavailable ? (
+              <span className="aichat-tag">{labels.unavailableLabel}</span>
+            ) : (
+              p?.available === true && <span className="aichat-tag aichat-tag-ok">{labels.availableLabel}</span>
+            )}
+          </div>
+        </div>
+        {attributes.length > 0 && (
+          <ul className="aichat-spec-attrs" aria-label={labels.specAttributesLabel}>
+            {attributes.map((a, i) => (
+              <li key={i} className="aichat-spec-attr">
+                {a}
+              </li>
+            ))}
+          </ul>
+        )}
+        {card.reason && <p className="aichat-spec-note">{card.reason}</p>}
+        {(commerce?.onAddProducts || pdf || onOpen) && (
+          <div className="aichat-spec-actions">
+            <ProductAddControl id={card.id} product={p} unavailable={unavailable} nameId={nameId} commerce={commerce} labels={labels} />
+            {(pdf || onOpen) && (
+              <div className="aichat-spec-links">
+                {pdf && (
+                  <a className="aichat-mini" href={pdf} target="_blank" rel="noopener noreferrer">
+                    {labels.specSheetLabel}
+                  </a>
+                )}
+                {onOpen && (
+                  <button type="button" className="aichat-mini" aria-describedby={nameId} onClick={() => onOpen(card.id)}>
+                    {labels.viewProductLabel}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </article>
+    </div>
+  );
+}
+
+// Cards `catalog` que ya navegaron solas en esta página. Complementa el ref del componente: si la
+// card se vuelve a montar (el host cambia de drawer a panel acoplado, p.ej.) no navega otra vez.
+const autoNavigated = new WeakSet<CatalogCard>();
+
+function CatalogBody({
+  card,
+  commerce,
+  labels,
+  live,
+}: {
+  card: CatalogCard;
+  commerce?: CommerceCallbacks;
+  labels: Labels;
+  live: boolean;
+}) {
+  const commerceRef = useRef(commerce);
+  commerceRef.current = commerce;
+  const [applied, setApplied] = useState(false);
+  // El undo vive con el componente: una card del historial (u otra sesión) nunca lo tiene.
+  const [undo, setUndo] = useState<(() => void) | null>(null);
+  const decided = useRef(false);
+
+  const navigate = useCallback(() => {
+    const fn = commerceRef.current?.onNavigateCatalog;
+    if (!fn) return;
+    let result: { undo?: () => void } | void;
+    try {
+      result = fn(card.filters ?? {}, card);
+    } catch {
+      return; // el host no pudo navegar: queda el botón para reintentar
+    }
+    const u = result && typeof result.undo === 'function' ? result.undo : null;
+    setApplied(true);
+    setUndo(() => u);
+  }, [card]);
+
+  // Navegación automática: una sola vez por card, solo en vivo y solo si el host lo permite
+  // ahora. El ref sobrevive al doble efecto de StrictMode y a los re-renders del streaming.
+  useEffect(() => {
+    if (decided.current) return;
+    decided.current = true;
+    if (!live || autoNavigated.has(card)) return;
+    const c = commerceRef.current;
+    if (!c?.onNavigateCatalog) return;
+    let auto = false;
+    try {
+      auto = c.shouldAutoNavigate?.() === true;
+    } catch {
+      auto = false;
+    }
+    if (!auto) return;
+    autoNavigated.add(card);
+    navigate();
+  }, [card, live, navigate]);
+
+  const summary = typeof card.summary === 'string' ? card.summary : '';
+  const canNavigate = typeof commerce?.onNavigateCatalog === 'function';
+
+  if (applied) {
+    return (
+      <div className="aichat-catalog aichat-catalog-applied" role="status">
+        <span className="aichat-catalog-check">
+          <CheckIcon />
+        </span>
+        <span className="aichat-catalog-text">{labels.catalogAppliedLabel.replace('{summary}', summary)}</span>
+        {undo && (
+          <button
+            type="button"
+            className="aichat-catalog-btn"
+            onClick={() => {
+              try {
+                undo();
+              } finally {
+                setUndo(null);
+                setApplied(false);
+              }
+            }}
+          >
+            {labels.catalogUndoLabel}
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="aichat-catalog">
+      <span className="aichat-catalog-text">{labels.catalogSuggestedLabel.replace('{summary}', summary)}</span>
+      {canNavigate && (
+        <button type="button" className="aichat-catalog-btn" onClick={navigate}>
+          {labels.catalogViewLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function SalesCard({
   card,
   commerce,
   onReply,
   labels,
+  live = false,
 }: {
   card: SalesCardType;
   commerce?: CommerceCallbacks;
   onReply?: (text: string) => void;
   labels: Labels;
+  live?: boolean;
 }) {
   switch (card.type) {
     case 'products':
@@ -348,6 +535,12 @@ export function SalesCard({
       return Array.isArray(card.options) ? <RepliesBody card={card} onReply={onReply} /> : null;
     case 'handoff':
       return <HandoffBody card={card} commerce={commerce} labels={labels} />;
+    case 'catalog':
+      return card.filters && typeof card.filters === 'object' ? (
+        <CatalogBody card={card} commerce={commerce} labels={labels} live={live} />
+      ) : null;
+    case 'spec':
+      return typeof card.id === 'string' && card.id !== '' ? <SpecBody card={card} commerce={commerce} labels={labels} /> : null;
     default:
       return null;
   }
