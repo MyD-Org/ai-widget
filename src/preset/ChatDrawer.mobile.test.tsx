@@ -186,6 +186,26 @@ describe('ChatDrawer · arrastre', () => {
     expect(sheet(container)).toHaveClass('aichat-sheet-peek');
   });
 
+  it('después de un arrastre (sin click del navegador) el próximo toque funciona', async () => {
+    const { container } = render(<ChatDrawer config={config} open />);
+    drag(container.querySelector('.aichat-header') as HTMLElement, 100, 200, 1000);
+    expect(sheet(container)).toHaveClass('aichat-sheet-peek');
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 1000);
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir la conversación' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Minimizar' }));
+    clock.mockRestore();
+    expect(sheet(container)).toHaveClass('aichat-sheet-peek');
+  });
+
+  it('el click que el navegador emite justo después del arrastre se descarta', () => {
+    const { container } = render(<ChatDrawer config={config} open />);
+    const header = container.querySelector('.aichat-header') as HTMLElement;
+    drag(header, 100, 130, 1000); // no llega al umbral
+    fireEvent.click(screen.getByRole('button', { name: 'Minimizar' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
   it('el scroll de la lista de mensajes no dispara el gesto', () => {
     const onPresentationChange = vi.fn();
     const { container } = render(<ChatDrawer config={config} open onPresentationChange={onPresentationChange} />);
@@ -352,6 +372,12 @@ describe('ChatDrawer · botón atrás del sistema', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Minimizar' }));
     await act(async () => history.back());
     await flushPop();
+    expect(history.state).toEqual({ host: 1 });
+  });
+
+  it('al montar le saca la marca a la entrada actual (recarga con la hoja abierta)', () => {
+    history.replaceState({ host: 1, aichatSheet: true }, '', location.href);
+    render(<ChatDrawer config={config} />);
     expect(history.state).toEqual({ host: 1 });
   });
 

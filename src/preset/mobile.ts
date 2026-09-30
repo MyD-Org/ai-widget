@@ -120,7 +120,10 @@ export function useVerticalDrag({
   targetRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const start = useRef<{ id: number; y: number; t: number; dragging: boolean } | null>(null);
-  const suppressClick = useRef(false);
+  // Hasta cuándo descartar el click que sigue a un arrastre (si el navegador lo emite). Por
+  // tiempo y no por bandera: en touch, un arrastre real muchas veces no produce click, y una
+  // bandera quedaría armada comiéndose el próximo toque legítimo.
+  const suppressClickUntil = useRef(0);
   const onCommitRef = useRef(onCommit);
   onCommitRef.current = onCommit;
 
@@ -155,15 +158,15 @@ export function useVerticalDrag({
     start.current = null;
     if (!s || s.id !== e.pointerId || !s.dragging) return;
     setOffset(0);
-    suppressClick.current = true;
+    suppressClickUntil.current = Date.now() + 400;
     if (cancelled) return;
     const dy = (e.clientY - s.y) * dir;
     const dt = Math.max(1, now() - s.t);
     if (dy >= threshold || (dy >= FLICK_MIN && dy / dt >= FLICK_VELOCITY)) onCommitRef.current();
   };
   const onClickCapture = (e: ReactMouseEvent) => {
-    if (!suppressClick.current) return;
-    suppressClick.current = false;
+    if (Date.now() >= suppressClickUntil.current) return;
+    suppressClickUntil.current = 0;
     e.preventDefault();
     e.stopPropagation();
   };

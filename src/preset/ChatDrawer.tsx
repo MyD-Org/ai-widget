@@ -147,6 +147,14 @@ export function ChatDrawer({
   // doble montaje de StrictMode dispararía un back() asíncrono contra la hoja recién abierta.
   const entryRef = useRef(false);
   const ignorePopRef = useRef(0);
+  // Si la página se recargó con la hoja abierta, la entrada actual (una página real del host)
+  // quedó con la marca: se la sacamos para no saltearla después como si fuera vieja.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !historyStateIsOurs()) return;
+    const rest = { ...(window.history.state as Record<string, unknown>) };
+    delete rest[SHEET_STATE_KEY];
+    window.history.replaceState(rest, '', window.location.href);
+  }, []);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (sheetExpanded && !entryRef.current) {
