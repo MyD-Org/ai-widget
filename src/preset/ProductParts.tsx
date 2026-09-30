@@ -13,6 +13,14 @@ export function CartIcon() {
   );
 }
 
+export function CheckIcon() {
+  return (
+    <svg {...icon}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" {...stroke} />
+    </svg>
+  );
+}
+
 function TrashIcon() {
   return (
     <svg {...icon}>

@@ -19,5 +19,9 @@ export function salesCardToPlainText(card: SalesCard): string {
       return card.options.join('\n');
     case 'handoff':
       return card.summary;
+    case 'catalog':
+      return card.summary;
+    case 'spec':
+      return card.label;
   }
 }

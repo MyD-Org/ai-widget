@@ -196,4 +196,33 @@ describe('ChatPanel — cards de venta', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Agregar todo al carrito' }));
     expect(onAddProducts).toHaveBeenCalledWith([{ id: '7', qty: 3 }]);
   });
+
+  it('card catalog: navega sola solo cuando llega en vivo por SSE, no desde el historial', async () => {
+    const card = { type: 'catalog', summary: 'Reflectores', filters: { categories: ['c1'] } };
+    const onNavigateCatalog = vi.fn().mockReturnValue(undefined);
+    const commerce = { onNavigateCatalog, shouldAutoNavigate: () => true };
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    // Historial de un hilo pre-creado con una card catalog vieja: no navega.
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify([{ id: 'h1', role: 'assistant', text: '', card }]), { status: 200 }),
+    );
+    const { unmount } = render(
+      <ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', conversationId: 'conv-h' }} commerce={commerce} />,
+    );
+    expect(await screen.findByRole('button', { name: 'Ver en el catálogo' })).toBeInTheDocument();
+    expect(onNavigateCatalog).not.toHaveBeenCalled();
+    unmount();
+
+    // La misma card llegando por SSE: navega una vez.
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'c-live' }), { status: 201 }))
+      .mockResolvedValueOnce(
+        sseResponse([`event: card\ndata: ${JSON.stringify(card)}\n\n`, 'event: done\ndata: {}\n\n']),
+      );
+    render(<ChatPanel config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt', persist: 'none' }} commerce={commerce} />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'reflectores{Enter}');
+    expect(await screen.findByText('Filtros aplicados: Reflectores')).toBeInTheDocument();
+    expect(onNavigateCatalog).toHaveBeenCalledTimes(1);
+    expect(onNavigateCatalog).toHaveBeenCalledWith({ categories: ['c1'] }, expect.objectContaining({ type: 'catalog' }));
+  });
 });

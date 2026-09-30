@@ -122,6 +122,48 @@ describe('useConversation', () => {
     expect(cards).toEqual(['A', 'B']);
   });
 
+  it('los mensajes armados desde el SSE quedan marcados live; los del historial no', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: 'h1', role: 'assistant', text: 'viejo', card: { type: 'replies', options: ['a', 'b'] } }]), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        sseResponse(['event: card\ndata: {"type":"replies","options":["x","y"]}\n\n', 'event: done\ndata: {}\n\n']),
+      );
+    const { result } = renderHook(() => useConversation(), { wrapper: preCreatedWrapper('conv-live') });
+    await waitFor(() => expect(result.current.messages.length).toBe(1));
+    expect(result.current.messages[0].live).toBeUndefined();
+    act(() => {
+      result.current.send('hola');
+    });
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const last = result.current.messages[result.current.messages.length - 1];
+    expect(last.live).toBe(true);
+  });
+
+  it('ready espera al historial inicial de una conversación retomada', async () => {
+    sessionStorage.setItem('aichat:conv:a', 'saved-1');
+    let resolveHistory: (r: Response) => void = () => {};
+    const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => (resolveHistory = r)));
+    const sessionWrapper = ({ children }: { children: ReactNode }) => (
+      <AiChatProvider config={{ baseUrl: 'https://api.test', agentId: 'a', token: 'jwt' }}>{children}</AiChatProvider>
+    );
+    const { result } = renderHook(() => useConversation(), { wrapper: sessionWrapper });
+    expect(result.current.ready).toBe(false);
+    await act(async () => {
+      resolveHistory(new Response(JSON.stringify([{ id: 'h1', role: 'user', text: 'hola' }]), { status: 200 }));
+    });
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.messages).toHaveLength(1);
+  });
+
+  it('ready es true de entrada sin conversación que retomar', () => {
+    const { result } = renderHook(() => useConversation(), { wrapper: wrapper() });
+    expect(result.current.ready).toBe(true);
+  });
+
   it('with config.conversationId: loads history and does NOT create a conversation', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch' as never) as unknown as ReturnType<typeof vi.fn>;
     // 1) GET history del hilo pre-creado; 2) POST mensaje (stream).

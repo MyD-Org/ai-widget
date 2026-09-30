@@ -8,6 +8,12 @@ import { ConversationMenu } from './ConversationMenu';
 import type { Branding } from './branding';
 import type { BudgetCard, CommerceCallbacks } from '../types';
 
+/** Mensaje que el host pide enviar en nombre del usuario (ChatDrawer `sendRequest`). */
+export interface ChatRequest {
+  id: string;
+  text: string;
+}
+
 function HistoryIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -36,6 +42,8 @@ export function ChatBody({
   onUseBudget,
   onUseMessage,
   commerce,
+  pendingRequest,
+  onRequestSent,
 }: {
   branding?: Branding;
   labels: Labels;
@@ -51,6 +59,10 @@ export function ChatBody({
   onUseBudget?: (card: BudgetCard) => void;
   onUseMessage?: (text: string) => void;
   commerce?: CommerceCallbacks;
+  /** Pedido del host a enviar apenas la conversación esté lista (token + historial inicial). */
+  pendingRequest?: ChatRequest | null;
+  /** Avisa que el pedido ya se envió, para que el dueño del estado lo descarte. */
+  onRequestSent?: (id: string) => void;
 }) {
   const {
     messages,
@@ -64,6 +76,7 @@ export function ChatBody({
     conversationsStatus,
     loadConversations,
     openConversation,
+    ready,
   } = useConversation();
   const [draft, setDraft] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -98,6 +111,18 @@ export function ChatBody({
   const streaming = status === 'streaming';
   const lastIsUser = messages[messages.length - 1]?.role === 'user';
   const showActivityChip = streaming && showActivity && Boolean(activity);
+
+  // Envío pedido por el host: espera a que la conversación esté lista y a que no haya un
+  // streaming en curso (send() lo descartaría). El ref evita el doble envío del doble efecto de
+  // StrictMode; el dueño del pedido (ChatDrawer) lo descarta con onRequestSent.
+  const sentRequestRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingRequest || !ready || streaming) return;
+    if (sentRequestRef.current === pendingRequest.id) return;
+    sentRequestRef.current = pendingRequest.id;
+    send(pendingRequest.text);
+    onRequestSent?.(pendingRequest.id);
+  }, [pendingRequest, ready, streaming, send, onRequestSent]);
 
   // Autoscroll al fondo cuando llegan mensajes o cambia el estado de streaming, PERO solo si el
   // usuario ya está pegado al fondo. Si scrolleó hacia arriba a leer, no lo interrumpimos.
@@ -294,6 +319,7 @@ export function ChatBody({
                   commerce={commerce}
                   onReply={isReplies ? send : undefined}
                   labels={labels}
+                  live={m.live === true}
                 />
               )}
             </Fragment>

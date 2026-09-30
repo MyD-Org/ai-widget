@@ -55,7 +55,7 @@ export interface Labels {
   addedLabel: string;
   /** Botón de la card `cart` (requiere commerce.onAddProducts). */
   addAllLabel: string;
-  /** Botón "Ver" de una fila de `products` (requiere commerce.onOpenProduct). */
+  /** Botón "Ver producto" de la card `spec` (requiere commerce.onOpenProduct). */
   viewProductLabel: string;
   /** Botón de la card `handoff`. */
   handoffLabel: string;
@@ -77,6 +77,20 @@ export interface Labels {
   decrementLabel: string;
   incrementLabel: string;
   removeLabel: string;
+  /** Card `catalog` después de navegar; `{summary}` se reemplaza por el resumen de los filtros. */
+  catalogAppliedLabel: string;
+  /** Card `catalog` sin navegación (historial, host que no navega solo o sin callback). */
+  catalogSuggestedLabel: string;
+  /** Botón que aplica los filtros de la card `catalog` (requiere commerce.onNavigateCatalog). */
+  catalogViewLabel: string;
+  /** Botón que deshace la navegación (solo si el host devolvió `undo`). */
+  catalogUndoLabel: string;
+  /** Link al PDF de la ficha técnica en la card `spec` (si el host informa `specUrl`). */
+  specSheetLabel: string;
+  /** Nombre accesible de la lista de atributos de la card `spec`. */
+  specAttributesLabel: string;
+  /** Tag de un producto que el host resolvió con available === true (card `spec`). */
+  availableLabel: string;
 }
 
 export const defaultLabels: Labels = {
@@ -114,7 +128,7 @@ export const defaultLabels: Labels = {
   addLabel: 'Agregar',
   addedLabel: 'Agregado',
   addAllLabel: 'Agregar todo al carrito',
-  viewProductLabel: 'Ver',
+  viewProductLabel: 'Ver producto',
   handoffLabel: 'Continuar por WhatsApp',
   unavailableLabel: 'No disponible',
   referenceTotalLabel: 'Total de referencia',
@@ -127,6 +141,13 @@ export const defaultLabels: Labels = {
   decrementLabel: 'Quitar uno',
   incrementLabel: 'Agregar uno más',
   removeLabel: 'Quitar del carrito',
+  catalogAppliedLabel: 'Filtros aplicados: {summary}',
+  catalogSuggestedLabel: 'Filtros sugeridos: {summary}',
+  catalogViewLabel: 'Ver en el catálogo',
+  catalogUndoLabel: 'Deshacer',
+  specSheetLabel: 'Ficha técnica (PDF)',
+  specAttributesLabel: 'Características',
+  availableLabel: 'Disponible',
 };
 
 export function resolveLabels(overrides?: Partial<Labels>): Labels {

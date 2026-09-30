@@ -28,6 +28,10 @@ export interface UseConversation {
   loadConversations: () => void;
   /** Abre una conversación existente: cambia el id activo y carga su historial de mensajes. */
   openConversation: (id: string) => void;
+  /** true cuando se puede enviar sin perder nada: hay token y ya llegó el historial inicial
+   *  (conversación retomada de sessionStorage o pre-creada). Un envío programático
+   *  (`sendRequest` del ChatDrawer) espera a esto; si no, el historial pisaría el mensaje. */
+  ready: boolean;
 }
 
 const storageKey = (agentId: string) => `aichat:conv:${agentId}`;
@@ -53,6 +57,18 @@ export function useConversation(): UseConversation {
   const preCreatedId = config.conversationId;
   const persist = preCreatedId ? config.persist === 'session' : config.persist !== 'none';
 
+  // Hay un historial inicial por traer (hilo pre-creado o retomado de sessionStorage). Se calcula
+  // en el primer render, así nadie ve `ready` en true antes de que arranque la carga.
+  const [hydrating, setHydrating] = useState<boolean>(() => {
+    if (preCreatedId) return true;
+    if (!persist) return false;
+    try {
+      return Boolean(sessionStorage.getItem(storageKey(config.agentId)));
+    } catch {
+      return false;
+    }
+  });
+
   // Conversación pre-creada: sembramos el id y cargamos su historial (no se crea ninguna). Se
   // re-corre si cambia el id (p. ej. el operador cambia de contacto en el inbox del CRM).
   const loadedFor = useRef<string | null>(null);
@@ -64,14 +80,22 @@ export function useConversation(): UseConversation {
     loadedFor.current = preCreatedId;
     convIdRef.current = preCreatedId;
     setCurrentId(preCreatedId);
-    client.listMessages(preCreatedId).then(setMessages).catch(() => setMessages([]));
+    setHydrating(true);
+    client
+      .listMessages(preCreatedId)
+      .then(setMessages)
+      .catch(() => setMessages([]))
+      .finally(() => setHydrating(false));
   }, [preCreatedId, session.ready, client]);
 
   // Resume from sessionStorage on mount once the session is ready.
   useEffect(() => {
     if (preCreatedId || !persist || !session.ready) return;
     const saved = sessionStorage.getItem(storageKey(config.agentId));
-    if (!saved || convIdRef.current) return;
+    if (!saved || convIdRef.current) {
+      setHydrating(false);
+      return;
+    }
     convIdRef.current = saved;
     setCurrentId(saved);
     client
@@ -81,7 +105,8 @@ export function useConversation(): UseConversation {
         sessionStorage.removeItem(storageKey(config.agentId));
         convIdRef.current = null;
         setCurrentId(null);
-      });
+      })
+      .finally(() => setHydrating(false));
   }, [preCreatedId, persist, session.ready, config.agentId, client]);
 
   const ensureConversation = useCallback(async (): Promise<string> => {
@@ -104,7 +129,7 @@ export function useConversation(): UseConversation {
       let assistant: Message | null = null;
       const ensureAssistant = (): Message => {
         if (!assistant) {
-          assistant = { id: localId(), role: 'assistant', text: '' };
+          assistant = { id: localId(), role: 'assistant', text: '', live: true };
           const created = assistant;
           setMessages((m) => [...m, created]);
         }
@@ -121,7 +146,7 @@ export function useConversation(): UseConversation {
           let a = ensureAssistant();
           if (a.card) {
             // ya hay una tarjeta en este mensaje → abrir un mensaje nuevo
-            const next: Message = { id: localId(), role: 'assistant', text: '' };
+            const next: Message = { id: localId(), role: 'assistant', text: '', live: true };
             setMessages((m) => [...m, next]);
             assistant = next;
             a = next;
@@ -240,5 +265,6 @@ export function useConversation(): UseConversation {
     conversationsStatus,
     loadConversations,
     openConversation,
+    ready: session.ready && !hydrating,
   };
 }
