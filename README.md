@@ -77,12 +77,18 @@ en escritorio (en mobile manda la hoja).
   mensaje del asistente en una línea. Se llega con Minimizar, Escape, el botón atrás del
   sistema o arrastrando la cabecera hacia abajo (80 px o un tirón); arrastrar la barra hacia
   arriba o tocarla la expande. Sin `presentation`, la hoja maneja su estado (abre expandida).
+  Controlada: al abrirse el chat (launcher, `sendRequest` u `open`) con `presentation` en
+  `'peek'`, el widget llama `onPresentationChange('expanded')` para no reabrir minimizado.
 - **Atrás del sistema**: al expandir se suma una entrada al historial (copia el `state` del
   host, así routers como el de Next la reconocen); atrás la saca y minimiza. Al minimizar o
-  cerrar por otra vía se saca con `history.back()` solo si sigue arriba de todo.
-- **Co-navegación**: si una card `catalog` en vivo navega sola (`shouldAutoNavigate`), la hoja
-  pasa a peek con "Filtros aplicados: …" y "Ver resultados" (cierra el chat). Sigue siendo una
-  sola vez por card.
+  cerrar por otra vía se saca con `history.back()` solo si sigue arriba de todo (con la marca,
+  o sin ella —un `replaceState` del router— pero sin entradas nuevas encima) y el host no
+  navegó.
+- **Co-navegación**: si una card `catalog` navega (sola en vivo con `shouldAutoNavigate`, una
+  única vez por card, o con "Ver en el catálogo"), la hoja pasa a peek con "Filtros aplicados:
+  …" y "Ver resultados" (cierra el chat). Abrir un producto (`onOpenProduct`) también la pasa a
+  peek, con el último mensaje. En esos casos no hay `history.back()` ni se restaura el scroll
+  de la página anterior.
 - **Launcher**: 56 px, respeta `safe-area-inset-bottom` y `--aichat-launcher-bottom` (16 px)
   para no tapar barras fijas del host. Se oculta mientras la hoja está abierta.
 - **Teaser**: burbuja junto al launcher (píldora arriba de él en mobile). Se dibuja fuera del

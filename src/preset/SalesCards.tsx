@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type {
   CartCard,
   CatalogCard,
@@ -15,7 +15,7 @@ import { formatArs } from './budgetSerializer';
 import { ProductCarousel } from './ProductCarousel';
 import { CartIcon, CheckIcon, ProductPrice, QuantityStepper } from './ProductParts';
 import { safeHttpUrl } from './safeUrl';
-import { SheetContext } from './sheetContext';
+import { useSheetRef } from './sheetContext';
 
 type ResolveFn = CommerceCallbacks['resolveProducts'];
 
@@ -174,13 +174,24 @@ function ProductAddControl({
   );
 }
 
+/** `onOpenProduct` del host, avisando a la hoja mobile que el host navegó. */
+function useOpenProduct(commerce?: CommerceCallbacks): ((id: string) => void) | undefined {
+  const sheetRef = useSheetRef();
+  const fn = commerce?.onOpenProduct;
+  if (!fn) return undefined;
+  return (id: string) => {
+    fn(id);
+    sheetRef.current?.onHostNavigated();
+  };
+}
+
 function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce?: CommerceCallbacks; labels: Labels }) {
   const { products, loading, complete } = useResolvedProducts(
     card.items.map((i) => i.id),
     commerce?.resolveProducts,
   );
   const uid = useId();
-  const onOpen = commerce?.onOpenProduct;
+  const onOpen = useOpenProduct(commerce);
 
   const cards = card.items.map((item, i) => {
     const p = products.get(item.id);
@@ -359,7 +370,7 @@ function SpecBody({ card, commerce, labels }: { card: SpecCard; commerce?: Comme
     ? p.attributes.filter((a): a is string => typeof a === 'string' && a.trim() !== '')
     : [];
   const pdf = safeHttpUrl(p?.specUrl);
-  const onOpen = commerce?.onOpenProduct;
+  const onOpen = useOpenProduct(commerce);
   return (
     <div className="aichat-card aichat-sales aichat-spec" aria-busy={loading || undefined}>
       <article className="aichat-product aichat-spec-product">
@@ -440,9 +451,7 @@ function CatalogBody({
   const [undo, setUndo] = useState<(() => void) | null>(null);
   const decided = useRef(false);
 
-  const sheet = useContext(SheetContext);
-  const sheetRef = useRef(sheet);
-  sheetRef.current = sheet;
+  const sheetRef = useSheetRef();
 
   const navigate = useCallback((): boolean => {
     const fn = commerceRef.current?.onNavigateCatalog;
@@ -456,6 +465,8 @@ function CatalogBody({
     const u = result && typeof result.undo === 'function' ? result.undo : null;
     setApplied(true);
     setUndo(() => u);
+    // En la hoja mobile, la navegación (automática o con el botón) deja ver el catálogo detrás.
+    sheetRef.current?.onHostNavigated({ catalogSummary: typeof card.summary === 'string' ? card.summary : '' });
     return true;
   }, [card]);
 
@@ -475,9 +486,7 @@ function CatalogBody({
     }
     if (!auto) return;
     autoNavigated.add(card);
-    // En la hoja mobile, la navegación automática deja ver el catálogo detrás (pasa a "peek").
-    // Va adentro de este bloque para heredar el "una sola vez por card".
-    if (navigate()) sheetRef.current?.onCatalogAutoNavigated(typeof card.summary === 'string' ? card.summary : '');
+    navigate();
   }, [card, live, navigate]);
 
   const summary = typeof card.summary === 'string' ? card.summary : '';

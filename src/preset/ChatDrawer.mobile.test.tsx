@@ -473,6 +473,164 @@ describe('ChatDrawer · co-navegación en mobile', () => {
   });
 });
 
+describe('ChatDrawer · otras navegaciones del host en mobile', () => {
+  const productsSse = [
+    `event: card\ndata: ${JSON.stringify({ type: 'products', items: [{ id: 'p1', label: 'Reflector' }] })}\n\n`,
+    'event: done\ndata: {}\n\n',
+  ];
+  // Como el router de Next: la entrada nueva aparece después del commit.
+  const hostPush = (tag: string) => () => {
+    setTimeout(() => history.pushState({ host: tag }, '', location.href), 0);
+  };
+
+  it('"Ver en el catálogo" (sin navegación automática) pasa a peek sin back()', async () => {
+    mockApi([`event: card\ndata: ${JSON.stringify(catalogFx)}\n\n`, 'event: done\ndata: {}\n\n']);
+    const back = vi.spyOn(history, 'back');
+    const { container } = render(
+      <ChatDrawer config={config} commerce={{ onNavigateCatalog: vi.fn(hostPush('catalogo')), shouldAutoNavigate: () => false }} />,
+    );
+    await openChat();
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'reflectores{Enter}');
+    await userEvent.click(await screen.findByRole('button', { name: 'Ver en el catálogo' }));
+    expect(sheet(container)).toHaveClass('aichat-sheet-peek');
+    expect(container.querySelector('.aichat-peek-text')).toHaveTextContent('Filtros aplicados: Reflectores');
+    expect(screen.getByRole('button', { name: 'Ver resultados' })).toBeInTheDocument();
+    await flushPop();
+    expect(back).not.toHaveBeenCalled();
+    expect(history.state).toEqual({ host: 'catalogo' });
+  });
+
+  it('abrir un producto pasa a peek sin back() ni restaurar el scroll', async () => {
+    mockApi(productsSse);
+    const back = vi.spyOn(history, 'back');
+    const onOpenProduct = vi.fn(hostPush('ficha'));
+    const { container } = render(<ChatDrawer config={config} commerce={{ onOpenProduct }} />);
+    await openChat();
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'reflector{Enter}');
+    await userEvent.click(await screen.findByRole('button', { name: 'Reflector' }));
+    expect(onOpenProduct).toHaveBeenCalledWith('p1');
+    expect(sheet(container)).toHaveClass('aichat-sheet-peek');
+    expect(screen.queryByRole('button', { name: 'Ver resultados' })).toBeNull();
+    await flushPop();
+    expect(back).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('host que ignora peek: atrás vuelve a nuestra entrada y pide minimizar; el ciclo siguiente saca su entrada', async () => {
+    mockApi(productsSse);
+    const back = vi.spyOn(history, 'back');
+    const onPresentationChange = vi.fn();
+    const onOpenChange = vi.fn();
+    const props = {
+      config,
+      presentation: 'expanded' as const, // nunca acepta 'peek'
+      onPresentationChange,
+      onOpenChange,
+      commerce: { onOpenProduct: hostPush('ficha') },
+    };
+    const { rerender } = render(<ChatDrawer {...props} open />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'reflector{Enter}');
+    await userEvent.click(await screen.findByRole('button', { name: 'Reflector' }));
+    await flushPop();
+    expect(history.state).toEqual({ host: 'ficha' });
+    expect(onPresentationChange).toHaveBeenCalledTimes(1);
+
+    // Atrás desde la ficha: aterriza en nuestra entrada (con la marca). No se queda ahí mudo.
+    await act(async () => history.back());
+    await flushPop();
+    expect(history.state).toEqual({ host: 1, aichatSheet: true });
+    expect(onPresentationChange).toHaveBeenCalledTimes(2);
+    expect(onPresentationChange).toHaveBeenLastCalledWith('peek');
+
+    // Cerrar: la marca de navegación del host ya no vale; la entrada se saca con back().
+    back.mockClear();
+    rerender(<ChatDrawer {...props} open={false} />);
+    await flushPop();
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(history.state).toEqual({ host: 1 });
+  });
+
+  it('una navegación del host no deja trabado el cierre siguiente (back y scroll)', async () => {
+    mockApi([`event: card\ndata: ${JSON.stringify(catalogFx)}\n\n`, 'event: done\ndata: {}\n\n']);
+    const back = vi.spyOn(history, 'back');
+    const props = {
+      config,
+      presentation: 'expanded' as const,
+      commerce: { onNavigateCatalog: hostPush('catalogo'), shouldAutoNavigate: () => true },
+    };
+    const { rerender } = render(<ChatDrawer {...props} open />);
+    await userEvent.type(screen.getByPlaceholderText('Escribí tu mensaje…'), 'reflectores{Enter}');
+    await screen.findByText('Filtros aplicados: Reflectores · Luz cálida · Apto exterior');
+    await flushPop();
+    // El host ignoró 'peek' y cierra: navegó, así que ni back() ni scroll de la página anterior.
+    rerender(<ChatDrawer {...props} open={false} />);
+    await flushPop();
+    expect(back).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    // Ciclo siguiente sin navegación: todo vuelve a la normalidad.
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 120 });
+    rerender(<ChatDrawer {...props} open />);
+    rerender(<ChatDrawer {...props} open={false} />);
+    await flushPop();
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(0, 120);
+    expect(history.state).toEqual({ host: 'catalogo' });
+  });
+
+  it('si el router pisa el state con replaceState (sin la marca), cerrar igual saca la entrada', async () => {
+    const back = vi.spyOn(history, 'back');
+    render(<ChatDrawer config={config} />);
+    await openChat();
+    history.replaceState({ router: 'next' }, '', location.href); // se perdió aichatSheet
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    await flushPop();
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(history.state).toEqual({ host: 1 });
+  });
+
+  it('sin la marca, el atrás del usuario igual minimiza', async () => {
+    const { container } = render(<ChatDrawer config={config} />);
+    await openChat();
+    history.replaceState({ router: 'next' }, '', location.href);
+    await act(async () => history.back());
+    await flushPop();
+    expect(sheet(container)).toHaveClass('aichat-sheet-peek');
+    expect(history.state).toEqual({ host: 1 });
+  });
+});
+
+describe('ChatDrawer · presentation al abrir', () => {
+  it('controlado y dejado en peek: al abrir pide expanded (launcher)', async () => {
+    const onPresentationChange = vi.fn();
+    render(<ChatDrawer config={config} presentation="peek" onPresentationChange={onPresentationChange} />);
+    await openChat();
+    expect(onPresentationChange).toHaveBeenCalledWith('expanded');
+  });
+
+  it('controlado y dejado en peek: al abrir con sendRequest también', async () => {
+    mockApi();
+    const onPresentationChange = vi.fn();
+    render(
+      <ChatDrawer
+        config={config}
+        presentation="peek"
+        onPresentationChange={onPresentationChange}
+        sendRequest={{ id: 'r1', text: 'hola' }}
+      />,
+    );
+    await waitFor(() => expect(onPresentationChange).toHaveBeenCalledWith('expanded'));
+  });
+
+  it('ya en expanded no emite nada al abrir', async () => {
+    const onPresentationChange = vi.fn();
+    render(<ChatDrawer config={config} onPresentationChange={onPresentationChange} />);
+    await openChat();
+    expect(onPresentationChange).not.toHaveBeenCalled();
+  });
+});
+
 describe('ChatDrawer · teaser', () => {
   const teaser = { id: 't1', text: '¿Le ayudo a encontrarlo?', actionLabel: 'Sí, ayúdeme', dismissLabel: 'Descartar' };
 

@@ -127,15 +127,27 @@ export function ChatDrawer({
   const isMobileRef = useRef(isMobile);
   isMobileRef.current = isMobile;
 
-  // Al cerrar, la próxima apertura (sin control del host) arranca expandida y sin aviso.
+  // Al cerrar, la próxima apertura (sin control del host) arranca expandida y sin aviso. Al
+  // abrir (launcher, sendRequest, `open` del host) con la presentación en 'peek', se pide
+  // 'expanded': un host que controla `presentation` y la dejó minimizada no reabre en la barra.
+  const presentationRef = useRef(presentation);
+  presentationRef.current = presentation;
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (open) return;
-    setInternalPresentation('expanded');
-    setPeekNotice(null);
-  }, [open]);
+    const opening = open && !wasOpen.current;
+    wasOpen.current = open;
+    if (!open) {
+      setInternalPresentation('expanded');
+      setPeekNotice(null);
+      return;
+    }
+    if (opening && presentationRef.current !== 'expanded') setPresentation('expanded');
+  }, [open, setPresentation]);
 
-  // El host navegó detrás de la hoja (card `catalog`): ni se restaura el scroll de la página
+  // El host navegó detrás de la hoja (una card lo pidió): ni se restaura el scroll de la página
   // anterior ni se hace history.back() (volvería a la URL de antes, deshaciendo la navegación).
+  // Solo vale mientras la hoja está expandida con su entrada puesta; lo consume la próxima
+  // salida de la expansión (minimizar o cerrar) y se limpia al volver a expandir.
   const hostNavigatedRef = useRef(false);
   useBodyScrollLock(sheetExpanded, hostNavigatedRef);
   const viewport = useVisualViewport(sheetExpanded);
@@ -145,7 +157,13 @@ export function ChatDrawer({
   // saca y la hoja se minimiza en vez de salir de la página. Al minimizar o cerrar por otra vía
   // la sacamos con history.back(), solo si sigue arriba de todo. Nunca desde un cleanup: el
   // doble montaje de StrictMode dispararía un back() asíncrono contra la hoja recién abierta.
-  const entryRef = useRef(false);
+  // pushedRef: nuestra entrada está puesta (y no la sacamos). No se depende solo de la marca en
+  // history.state: el router de Next puede hacer replaceState y perderla; por eso también se
+  // guarda history.length (un replaceState no lo cambia, un push del host sí). pushedHrefRef: la
+  // URL al ponerla; si cambió, el host navegó aunque no nos haya avisado.
+  const pushedRef = useRef(false);
+  const pushedHrefRef = useRef('');
+  const pushedLengthRef = useRef(0);
   const ignorePopRef = useRef(0);
   // Si la página se recargó con la hoja abierta, la entrada actual (una página real del host)
   // quedó con la marca: se la sacamos para no saltearla después como si fuera vieja.
@@ -157,18 +175,28 @@ export function ChatDrawer({
   }, []);
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (sheetExpanded && !entryRef.current) {
-      entryRef.current = true;
-      const st: unknown = window.history.state;
-      const base = typeof st === 'object' && st !== null ? (st as Record<string, unknown>) : {};
-      window.history.pushState({ ...base, [SHEET_STATE_KEY]: true }, '', window.location.href);
-    } else if (!sheetExpanded && entryRef.current) {
-      entryRef.current = false;
-      const hostNavigated = hostNavigatedRef.current;
-      if (!hostNavigated && historyStateIsOurs()) {
-        ignorePopRef.current += 1;
-        window.history.back();
+    if (sheetExpanded) {
+      if (!pushedRef.current) {
+        pushedRef.current = true;
+        pushedHrefRef.current = window.location.href;
+        hostNavigatedRef.current = false;
+        const st: unknown = window.history.state;
+        const base = typeof st === 'object' && st !== null ? (st as Record<string, unknown>) : {};
+        window.history.pushState({ ...base, [SHEET_STATE_KEY]: true }, '', window.location.href);
+        pushedLengthRef.current = window.history.length;
       }
+      return;
+    }
+    // Salió de la expansión (minimizar, cerrar, pasar a escritorio).
+    const hostNavigated = hostNavigatedRef.current || window.location.href !== pushedHrefRef.current;
+    hostNavigatedRef.current = false;
+    if (!pushedRef.current) return;
+    pushedRef.current = false;
+    // Nuestra entrada sigue arriba: con la marca, o sin ella pero sin entradas nuevas encima.
+    const onTop = historyStateIsOurs() || window.history.length === pushedLengthRef.current;
+    if (!hostNavigated && onTop) {
+      ignorePopRef.current += 1;
+      window.history.back();
     }
   }, [sheetExpanded]);
   useEffect(() => {
@@ -178,11 +206,15 @@ export function ChatDrawer({
         return;
       }
       const onOurs = historyStateIsOurs();
-      if (entryRef.current && !onOurs) {
-        // El usuario tocó atrás: la entrada ya salió, solo queda minimizar.
-        entryRef.current = false;
+      if (pushedRef.current && (!onOurs || hostNavigatedRef.current)) {
+        // Atrás del usuario. Sin nuestra marca, la entrada ya salió: solo queda minimizar. Con la
+        // marca pero con una navegación del host en el medio (que no minimizó la hoja), volvió a
+        // nuestra entrada: se minimiza y la transición la saca con back() como siempre.
+        if (!onOurs) pushedRef.current = false;
+        hostNavigatedRef.current = false;
+        pushedHrefRef.current = window.location.href;
         setPresentation('peek');
-      } else if (!entryRef.current && onOurs) {
+      } else if (!pushedRef.current && onOurs) {
         // Entrada vieja (quedó debajo de una navegación del host): se saltea sin detenerse.
         ignorePopRef.current += 1;
         window.history.back();
@@ -257,30 +289,21 @@ export function ChatDrawer({
     setPending((p) => (p?.id === id ? null : p));
   }, []);
 
-  // Co-navegación en mobile: la card `catalog` navegó sola → la hoja pasa a "peek" con el aviso.
+  // Co-navegación en mobile: una card hizo navegar al host (catálogo, ficha de producto) → la
+  // hoja pasa a "peek" para que se vea la página nueva; con catálogo, con el aviso de filtros.
   const catalogAppliedRef = useRef(resolved.catalogAppliedLabel);
   catalogAppliedRef.current = resolved.catalogAppliedLabel;
   const sheetContext = useMemo<SheetContextValue>(
     () => ({
-      onCatalogAutoNavigated: (summary) => {
+      onHostNavigated: (notice) => {
         if (!isMobileRef.current || !openRef.current) return;
-        if (sheetExpandedRef.current) hostNavigatedRef.current = true;
-        setPeekNotice(catalogAppliedRef.current.replace('{summary}', summary));
+        if (sheetExpandedRef.current && pushedRef.current) hostNavigatedRef.current = true;
+        setPeekNotice(notice ? catalogAppliedRef.current.replace('{summary}', notice.catalogSummary) : null);
         setPresentation('peek');
       },
     }),
     [setPresentation],
   );
-
-  // hostNavigated vale para la transición que dispara; después se limpia.
-  useEffect(() => {
-    if (sheetExpanded) {
-      hostNavigatedRef.current = false;
-      return;
-    }
-    const t = setTimeout(() => (hostNavigatedRef.current = false), 0);
-    return () => clearTimeout(t);
-  }, [sheetExpanded]);
 
   const sheetControls: SheetControls | undefined = sheetOpen
     ? {
