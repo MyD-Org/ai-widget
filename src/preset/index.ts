@@ -4,6 +4,8 @@ export { Card } from './Card';
 export { budgetCardToPlainText, budgetTotal, formatArs } from './budgetSerializer';
 export { salesCardToPlainText } from './salesSerializer';
 export type { ChatPresetProps } from './ChatPanel';
+export type { ChatDrawerProps } from './ChatDrawer';
+export type { ChatRequest } from './ChatBody';
 export type { Labels } from './labels';
 export { defaultLabels } from './labels';
 export type { Branding, Theme } from './branding';

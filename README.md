@@ -30,6 +30,26 @@ import '@myd-org/ai-widget/styles';
 `<ChatPanel>` is the inline variant (same props). `showActivity` shows tool/debug
 activity (off by default).
 
+### ChatDrawer: controlado, acoplado y pedidos del host
+
+```tsx
+<ChatDrawer
+  config={config}
+  open={open}                 // opcional: controlado por el host
+  onOpenChange={setOpen}
+  dock={wide ? 'right' : 'none'} // 'right': panel de alto completo, ancho --aichat-dock-width (400px)
+  sendRequest={request}       // { id, text }: cada id nuevo abre el chat y envía text una vez
+  commerce={{
+    resolveProducts,          // suma code, attributes y specUrl para la card spec
+    onNavigateCatalog: (filters, card) => ({ undo }), // card catalog
+    shouldAutoNavigate: () => onCatalog && wide,      // navegar sola (solo cards en vivo)
+  }}
+/>
+```
+
+Con `dock="right"` el host reserva el ancho en su layout (p.ej. `padding-right:
+var(--aichat-dock-width, 400px)`).
+
 ## Headless
 
 ```tsx

@@ -532,6 +532,30 @@
   max-width: none;
   max-height: none;
 }
+/* Acoplado a la derecha (ChatDrawer dock="right"): alto completo, sin esquinas ni sombra. El
+   host reserva el ancho en su layout (p.ej. padding-right con la misma variable). El borde y el
+   fondo del panel salen de .aichat-dock. */
+.aichat-drawer.aichat-drawer-dock {
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: auto;
+  width: var(--aichat-dock-width, 400px);
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  transform-origin: right center;
+  animation-name: aichat-dock-in;
+}
+/* El launcher (que cierra y reabre el panel) se corre para no tapar el contenido acoplado. */
+.aichat-drawer-dock ~ .aichat-launcher-bottom-right { right: calc(var(--aichat-dock-width, 400px) + 26px); }
+@keyframes aichat-dock-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
 @keyframes aichat-drawer-in {
   from { opacity: 0; transform: translateY(14px) scale(0.97); }
   to { opacity: 1; transform: none; }
