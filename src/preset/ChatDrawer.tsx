@@ -49,6 +49,10 @@ export interface ChatDrawerProps extends ChatPresetProps {
   /** Invitación junto al launcher (burbuja en escritorio, píldora en mobile). Se oculta con el
    *  chat abierto y al tocar cualquiera de sus botones. */
   teaser?: ChatTeaser;
+  /** false: no se dibuja el launcher (ni el teaser, que va pegado a él). El host abre el chat
+   *  con su propio botón vía `open`/`onOpenChange` o `sendRequest`; se cierra con la X de la
+   *  cabecera o Escape. Al cerrar, el foco vuelve a lo que lo tenía antes de abrir. Default true. */
+  launcher?: boolean;
   onTeaserAction?: (id: string) => void;
   onTeaserDismiss?: (id: string) => void;
 }
@@ -83,6 +87,7 @@ export function ChatDrawer({
   teaser,
   onTeaserAction,
   onTeaserDismiss,
+  launcher = true,
 }: ChatDrawerProps) {
   const resolved = resolveLabels(labels);
   const [internalOpen, setInternalOpen] = useState(false);
@@ -224,6 +229,34 @@ export function ChatDrawer({
     return () => window.removeEventListener('popstate', onPop);
   }, [setPresentation]);
 
+  // Escape cierra el chat en escritorio (flotante o acoplado). El menú de conversaciones corta la
+  // propagación de su Escape, así primero se cierra él.
+  useEffect(() => {
+    if (!open || isMobile) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, isMobile, setOpen]);
+
+  // Sin launcher, el foco vuelve al cerrar a lo que lo tenía al abrir (el botón del host).
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (launcher) return;
+    if (open) {
+      const active = document.activeElement;
+      returnFocusRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
+      return;
+    }
+    const el = returnFocusRef.current;
+    returnFocusRef.current = null;
+    const active = document.activeElement;
+    const focusLost = !active || active === document.body || !document.contains(active);
+    if (el && focusLost && document.contains(el)) el.focus();
+  }, [open, launcher]);
+
   // Escape minimiza la hoja. En window: el menú de conversaciones escucha en document y corta la
   // propagación, así su Escape lo cierra a él y no a la hoja.
   useEffect(() => {
@@ -321,7 +354,7 @@ export function ChatDrawer({
 
   // Teaser: se descarta localmente al tocarlo, sin esperar a que el host saque la prop.
   const [teaserDone, setTeaserDone] = useState<string | null>(null);
-  const showTeaser = Boolean(teaser && teaser.id && !open && teaserDone !== teaser.id);
+  const showTeaser = Boolean(launcher && teaser && teaser.id && !open && teaserDone !== teaser.id);
 
   let drawerClass: string;
   let drawerStyle: CSSProperties | undefined;
@@ -368,6 +401,7 @@ export function ChatDrawer({
                 pendingRequest={pending}
                 onRequestSent={onRequestSent}
                 sheet={sheetControls}
+                onClose={isMobile ? undefined : () => setOpen(false)}
               />
             </AiChatProvider>
           </SheetContext.Provider>
@@ -406,6 +440,7 @@ export function ChatDrawer({
           </div>
         </div>
       )}
+      {launcher && (
       <button
         ref={launcherRef}
         type="button"
@@ -430,6 +465,7 @@ export function ChatDrawer({
           </svg>
         )}
       </button>
+      )}
     </div>
   );
 }

@@ -74,6 +74,7 @@ export function ChatBody({
   pendingRequest,
   onRequestSent,
   sheet,
+  onClose,
 }: {
   branding?: Branding;
   labels: Labels;
@@ -95,6 +96,9 @@ export function ChatBody({
   onRequestSent?: (id: string) => void;
   /** Hoja mobile: cabecera con Minimizar/Cerrar y arrastre, y barra minimizada ("peek"). */
   sheet?: SheetControls;
+  /** Escritorio (flotante o acoplado): botón Cerrar en la cabecera. La hoja mobile usa el de
+   *  `sheet`. Sin esto, el único cierre en escritorio era el launcher. */
+  onClose?: () => void;
 }) {
   const {
     messages,
@@ -277,7 +281,7 @@ export function ChatBody({
             {branding?.subtitle ?? labels.statusOnline}
           </span>
         </div>
-        {(onToggleExpand || enableHistory || sheet) && (
+        {(onToggleExpand || enableHistory || sheet || onClose) && (
           <div className="aichat-header-actions">
             {enableHistory && (
               <button
@@ -359,6 +363,17 @@ export function ChatBody({
                     <path d="M3 21l7-7" />
                   </svg>
                 )}
+              </button>
+            )}
+            {onClose && !sheet && (
+              <button
+                type="button"
+                className="aichat-new aichat-close"
+                onClick={onClose}
+                aria-label={labels.closeLabel}
+                title={labels.closeLabel}
+              >
+                <CloseIcon />
               </button>
             )}
           </div>
