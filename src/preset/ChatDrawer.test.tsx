@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, useState } from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -167,5 +167,50 @@ describe('ChatDrawer', () => {
     expect(sent).toEqual(['nuevo']);
     expect(screen.getByText('viejo')).toBeInTheDocument();
     expect(screen.getByText('nuevo')).toBeInTheDocument();
+  });
+});
+
+describe('ChatDrawer: cierre en escritorio y sin launcher', () => {
+  it('la cabecera tiene Cerrar y cierra el chat', async () => {
+    const onOpenChange = vi.fn();
+    render(<ChatDrawer config={config} onOpenChange={onOpenChange} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir chat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(screen.queryByPlaceholderText('Escribí tu mensaje…')).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('Escape cierra el chat en escritorio', async () => {
+    render(<ChatDrawer config={config} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir chat' }));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByPlaceholderText('Escribí tu mensaje…')).not.toBeInTheDocument();
+  });
+
+  it('launcher={false}: sin launcher ni teaser; el host abre con open', () => {
+    const teaser = { id: 't1', text: '¿Ayuda?', actionLabel: 'Sí', dismissLabel: 'Descartar' };
+    const { rerender } = render(<ChatDrawer config={config} launcher={false} teaser={teaser} open={false} />);
+    expect(screen.queryByRole('button', { name: 'Abrir chat' })).not.toBeInTheDocument();
+    expect(screen.queryByText('¿Ayuda?')).not.toBeInTheDocument();
+    rerender(<ChatDrawer config={config} launcher={false} teaser={teaser} open />);
+    expect(screen.getByPlaceholderText('Escribí tu mensaje…')).toBeInTheDocument();
+  });
+
+  it('launcher={false}: al cerrar, el foco vuelve al botón del host', async () => {
+    function Host() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Asistente
+          </button>
+          <ChatDrawer config={config} launcher={false} open={open} onOpenChange={setOpen} />
+        </>
+      );
+    }
+    render(<Host />);
+    await userEvent.click(screen.getByRole('button', { name: 'Asistente' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(screen.getByRole('button', { name: 'Asistente' })).toHaveFocus();
   });
 });

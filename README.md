@@ -50,6 +50,11 @@ activity (off by default).
 Con `dock="right"` el host reserva el ancho en su layout (p.ej. `padding-right:
 var(--aichat-dock-width, 400px)`).
 
+En escritorio la cabecera tiene **Cerrar** y Escape cierra el chat (si el menú de conversaciones
+está abierto, Escape cierra primero el menú). Con `launcher={false}` no se dibuja la burbuja (ni el
+teaser): el host abre el chat con su propio botón (`open`/`onOpenChange` o `sendRequest`) y, al
+cerrar, el foco vuelve a ese botón.
+
 ### ChatDrawer en mobile
 
 Por debajo de `mobileBreakpoint` (768 px por defecto) el drawer es una hoja a pantalla
