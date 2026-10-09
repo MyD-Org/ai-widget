@@ -419,6 +419,32 @@
   font-size: 0.875rem;
   animation: aichat-rise 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
+.aichat-empty-text { margin: 0; }
+/* Preguntas sugeridas del estado vacío. */
+.aichat-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+.aichat-suggestion {
+  min-height: 44px;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--aichat-border);
+  border-radius: var(--aichat-radius-chip);
+  background: var(--aichat-surface-solid);
+  color: var(--aichat-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.aichat-suggestion:hover { border-color: var(--aichat-primary); }
+.aichat-suggestion:focus-visible { outline: 2px solid var(--aichat-ring); outline-offset: 2px; }
+.aichat-suggestion:disabled { opacity: 0.6; cursor: default; }
 
 /* error */
 .aichat-error {
@@ -580,32 +606,48 @@
 .aichat-mobile .aichat-launcher-bottom-right { right: calc(16px + env(safe-area-inset-right, 0px)); }
 .aichat-mobile .aichat-launcher-bottom-left { left: calc(16px + env(safe-area-inset-left, 0px)); }
 
-/* Hoja a pantalla completa. Con visualViewport, el ChatDrawer pisa top/height en línea para
-   seguir al teclado; sin soporte rige el 100dvh. */
+/* Hoja inferior: deja un hueco arriba (`--aichat-sheet-gap`, 48 px, más la safe-area) donde la
+   página del host asoma atenuada, como un diálogo tipo sheet. Con visualViewport, el ChatDrawer
+   pisa top/height en línea para seguir al teclado; sin soporte rige el 100dvh. */
 .aichat-drawer.aichat-sheet {
-  top: 0;
+  top: calc(var(--aichat-sheet-gap, 48px) + env(safe-area-inset-top, 0px));
   right: 0;
   bottom: 0;
   left: 0;
   width: auto;
   max-width: none;
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh - var(--aichat-sheet-gap, 48px) - env(safe-area-inset-top, 0px));
+  height: calc(100dvh - var(--aichat-sheet-gap, 48px) - env(safe-area-inset-top, 0px));
   max-height: none;
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
-    env(safe-area-inset-left, 0px);
-  border-radius: 0;
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  border-radius: var(--aichat-radius-sheet, 20px) var(--aichat-radius-sheet, 20px) 0 0;
   background: var(--aichat-bg);
-  box-shadow: none;
+  box-shadow: 0 -10px 30px -12px rgba(8, 10, 16, 0.35);
+  overflow: hidden;
   transform-origin: bottom center;
   animation-name: aichat-sheet-in;
 }
 .aichat-drawer.aichat-sheet:focus { outline: none; }
 .aichat-sheet .aichat-panel {
-  border-radius: 0;
+  border-radius: inherit;
   box-shadow: none;
   transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
+/* Fondo atenuado detrás de la hoja expandida; tocarlo cierra el chat. */
+.aichat-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(8, 10, 16, 0.42);
+  animation: aichat-scrim-in 0.2s ease-out both;
+}
+@keyframes aichat-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Cabecera de la hoja en una línea: título y acciones, sin avatar ni subtítulo. */
+.aichat-header-sheet .aichat-avatar,
+.aichat-header-sheet .aichat-status { display: none; }
 /* La cabecera es la manija: sin touch-action el navegador se quedaría con el gesto. */
 .aichat-header-sheet {
   position: relative;
@@ -615,22 +657,38 @@
   -webkit-user-select: none;
 }
 .aichat-grabber {
+  /* Área táctil de 64×20 alrededor de la barrita visible de 36×4. */
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 64px;
+  height: 20px;
+  margin-left: -32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.aichat-grabber::before {
+  content: "";
   position: absolute;
   top: 7px;
-  left: 50%;
+  left: 14px;
   width: 36px;
   height: 4px;
-  margin-left: -18px;
   border-radius: 2px;
   background: color-mix(in oklab, var(--aichat-muted) 45%, transparent);
 }
+.aichat-grabber:focus-visible { outline: 2px solid var(--aichat-ring); outline-offset: -2px; border-radius: 6px; }
 /* 16px evita el zoom automático de iOS al enfocar. */
 .aichat-sheet .aichat-input { font-size: 16px; }
 .aichat-sheet .aichat-log { overscroll-behavior: contain; }
 .aichat-sheet .aichat-new { width: 36px; height: 36px; }
 
-/* Barra minimizada ("peek"): el host sigue a la vista y se puede usar. */
+/* Barra minimizada ("peek"): el host sigue a la vista y se puede usar. Su z-index es
+   configurable (`--aichat-peek-z-index`) para que quede debajo de los diálogos del host. */
 .aichat-drawer.aichat-sheet.aichat-sheet-peek {
+  z-index: var(--aichat-peek-z-index, 9999);
   top: auto;
   height: auto;
   padding: 0;

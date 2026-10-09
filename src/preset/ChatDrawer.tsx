@@ -59,6 +59,9 @@ export interface ChatDrawerProps extends ChatPresetProps {
 
 const SHEET_STATE_KEY = 'aichatSheet';
 
+/** Hueco arriba de la hoja expandida: la página del host asoma (atenuada) y tocarla cierra. */
+const SHEET_GAP = '(var(--aichat-sheet-gap, 48px) + env(safe-area-inset-top, 0px))';
+
 function historyStateIsOurs(): boolean {
   const st: unknown = window.history.state;
   return typeof st === 'object' && st !== null && (st as Record<string, unknown>)[SHEET_STATE_KEY] === true;
@@ -77,6 +80,7 @@ export function ChatDrawer({
   onUseBudget,
   onUseMessage,
   commerce,
+  suggestions,
   open: openProp,
   onOpenChange,
   dock = 'none',
@@ -361,7 +365,11 @@ export function ChatDrawer({
   if (isMobile) {
     drawerClass = `aichat-drawer aichat-sheet ${presentation === 'peek' ? 'aichat-sheet-peek' : ''}`;
     if (sheetExpanded && viewport) {
-      drawerStyle = { top: `${viewport.offsetTop}px`, bottom: 'auto', height: `${viewport.height}px` };
+      drawerStyle = {
+        top: `calc(${viewport.offsetTop}px + ${SHEET_GAP})`,
+        bottom: 'auto',
+        height: `calc(${viewport.height}px - ${SHEET_GAP})`,
+      };
     }
   } else if (docked) {
     drawerClass = 'aichat-drawer aichat-drawer-dock aichat-dock';
@@ -375,6 +383,7 @@ export function ChatDrawer({
       className={`aichat-root ${themeClass(theme)} ${isMobile ? 'aichat-mobile' : ''} ${className ?? ''}`}
       style={brandingStyle(branding)}
     >
+      {sheetExpanded && <div className="aichat-scrim" aria-hidden="true" onClick={() => setOpen(false)} />}
       {open && (
         <div
           ref={drawerRef}
@@ -398,6 +407,7 @@ export function ChatDrawer({
                 onUseBudget={onUseBudget}
                 onUseMessage={onUseMessage}
                 commerce={commerce}
+                suggestions={suggestions}
                 pendingRequest={pending}
                 onRequestSent={onRequestSent}
                 sheet={sheetControls}

@@ -71,6 +71,7 @@ export function ChatBody({
   onUseBudget,
   onUseMessage,
   commerce,
+  suggestions,
   pendingRequest,
   onRequestSent,
   sheet,
@@ -90,6 +91,8 @@ export function ChatBody({
   onUseBudget?: (card: BudgetCard) => void;
   onUseMessage?: (text: string) => void;
   commerce?: CommerceCallbacks;
+  /** Preguntas sugeridas del estado vacío (ChatPresetProps.suggestions). */
+  suggestions?: string[];
   /** Pedido del host a enviar apenas la conversación esté lista (token + historial inicial). */
   pendingRequest?: ChatRequest | null;
   /** Avisa que el pedido ya se envió, para que el dueño del estado lo descarte. */
@@ -266,7 +269,16 @@ export function ChatBody({
     <>
     <div className="aichat-panel" ref={panelRef} hidden={peek}>
       <div className={`aichat-header ${sheet ? 'aichat-header-sheet' : ''}`} {...(sheet ? headerDrag : {})}>
-        {sheet && <span className="aichat-grabber" aria-hidden="true" />}
+        {/* La manija es el botón Minimizar: tocarla o arrastrarla hacia abajo minimiza la hoja. */}
+        {sheet && (
+          <button
+            type="button"
+            className="aichat-grabber"
+            onClick={sheet.onMinimize}
+            aria-label={labels.minimizeLabel}
+            title={labels.minimizeLabel}
+          />
+        )}
         {branding?.avatarUrl ? (
           <img className="aichat-avatar" src={branding.avatarUrl} alt="" />
         ) : (
@@ -299,15 +311,6 @@ export function ChatBody({
             )}
             {sheet && (
               <>
-                <button
-                  type="button"
-                  className="aichat-new aichat-minimize"
-                  onClick={sheet.onMinimize}
-                  aria-label={labels.minimizeLabel}
-                  title={labels.minimizeLabel}
-                >
-                  <ChevronIcon dir="down" />
-                </button>
                 <button
                   type="button"
                   className="aichat-new aichat-close"
@@ -396,7 +399,20 @@ export function ChatBody({
       )}
 
       <div className="aichat-log" ref={logRef} onScroll={onLogScroll}>
-        {messages.length === 0 && !streaming && <div className="aichat-empty">{labels.emptyState}</div>}
+        {messages.length === 0 && !streaming && (
+          <div className="aichat-empty">
+            <p className="aichat-empty-text">{labels.emptyState}</p>
+            {suggestions && suggestions.length > 0 && (
+              <div className="aichat-suggestions">
+                {suggestions.map((s) => (
+                  <button key={s} type="button" className="aichat-suggestion" disabled={!ready} onClick={() => send(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {messages.map((m, i) => {
           // Las respuestas sugeridas solo valen para el turno actual: se dibujan si la card es
