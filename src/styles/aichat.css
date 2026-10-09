@@ -411,22 +411,28 @@
 }
 
 /* estado vacío */
+/* Estado vacío abajo, cerca del campo de escribir (donde está el pulgar en mobile): el texto
+   como título y, debajo, las preguntas sugeridas a todo el ancho. */
 .aichat-empty {
-  margin: auto;
-  padding: 2rem 2.25rem;
-  text-align: center;
-  color: var(--aichat-muted);
-  font-size: 0.875rem;
+  margin-top: auto;
+  padding: 1.5rem 0.125rem 0.25rem;
+  text-align: left;
   animation: aichat-rise 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
-.aichat-empty-text { margin: 0; }
+.aichat-empty-text {
+  margin: 0;
+  font-family: var(--aichat-font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--aichat-text);
+}
 /* Preguntas sugeridas del estado vacío. */
 .aichat-suggestions {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
-  text-align: left;
 }
 .aichat-suggestion {
   min-height: 44px;
@@ -442,7 +448,7 @@
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
-.aichat-suggestion:hover { border-color: var(--aichat-primary); }
+.aichat-suggestion:hover { border-color: var(--aichat-primary); background: var(--aichat-elevated); }
 .aichat-suggestion:focus-visible { outline: 2px solid var(--aichat-ring); outline-offset: 2px; }
 .aichat-suggestion:disabled { opacity: 0.6; cursor: default; }
 
