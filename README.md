@@ -57,14 +57,15 @@ cerrar, el foco vuelve a ese botón.
 
 ### ChatDrawer en mobile
 
-Por debajo de `mobileBreakpoint` (768 px por defecto) el drawer es una hoja a pantalla
-completa (`100dvh`, con `env(safe-area-inset-*)`; declarar `viewport-fit=cover` en el meta
-viewport). Entre el breakpoint y 1279 px sigue el drawer flotante, y `dock="right"` no cambia
+Por debajo de `mobileBreakpoint` (768 px por defecto) el drawer es una hoja inferior que deja
+asomar la página arriba (`--aichat-sheet-gap`, 48 px, más la safe-area; declarar
+`viewport-fit=cover` en el meta viewport), con el fondo atenuado: tocarlo cierra el chat. Entre el breakpoint y 1279 px sigue el drawer flotante, y `dock="right"` no cambia
 en escritorio (en mobile manda la hoja).
 
 ```tsx
 <ChatDrawer
   config={config}
+  suggestions={['¿Qué lámpara conviene para un living?']} // estado vacío: cada una se envía al tocarla
   mobileBreakpoint={768}
   presentation={presentation}      // opcional: 'expanded' | 'peek', controlado por el host
   onPresentationChange={setPresentation}
@@ -75,10 +76,13 @@ en escritorio (en mobile manda la hoja).
 ```
 
 - **Hoja expandida**: `role="dialog"` + `aria-modal`, foco atrapado, scroll del body
-  bloqueado (se restaura la posición al soltar), cabecera con Minimizar y Cerrar. Sigue a
+  bloqueado (se restaura la posición al soltar). Cabecera en una línea (título, Conversaciones y
+  Cerrar, sin avatar ni subtítulo); la manija de arriba es el botón Minimizar. Sigue a
   `window.visualViewport` para que la caja de texto quede arriba del teclado; el input va a
   16 px (sin zoom de iOS) con `enterkeyhint="send"`.
-- **Peek**: barra inferior (`--aichat-peek-height`, 64 px, más la safe-area) con el último
+- **Peek**: barra inferior (`--aichat-peek-height`, 64 px, más la safe-area; `z-index`
+  `--aichat-peek-z-index`, 9999 por defecto: bajarlo para que quede debajo de los diálogos del
+  host) con el último
   mensaje del asistente en una línea. Se llega con Minimizar, Escape, el botón atrás del
   sistema o arrastrando la cabecera hacia abajo (80 px o un tirón); arrastrar la barra hacia
   arriba o tocarla la expande. Sin `presentation`, la hoja maneja su estado (abre expandida).

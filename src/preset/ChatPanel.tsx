@@ -37,6 +37,9 @@ export interface ChatPresetProps {
    *  `onOpenProduct` no hay "Ver"; sin `resolveProducts` las cards muestran el label del modelo
    *  sin precio ni foto. Contrato: platform/contracts/sales-cards/v1. Opcional. */
   commerce?: CommerceCallbacks;
+  /** Preguntas sugeridas en el estado vacío (sin mensajes): cada una es un botón que la envía
+   *  como mensaje del usuario. Opcional. */
+  suggestions?: string[];
   /** Tema del widget. 'auto' (default) sigue la preferencia del sistema
    *  (prefers-color-scheme). Pasá 'light' o 'dark' si tu app tiene su propio switch:
    *  el usuario puede tener la app en oscuro con el sistema en claro. */
@@ -59,6 +62,7 @@ export function ChatPanel({
   onUseBudget,
   onUseMessage,
   commerce,
+  suggestions,
   theme = 'auto',
   variant = 'card',
 }: ChatPresetProps) {
@@ -79,6 +83,7 @@ export function ChatPanel({
           onUseBudget={onUseBudget}
           onUseMessage={onUseMessage}
           commerce={commerce}
+          suggestions={suggestions}
         />
       </AiChatProvider>
     </div>

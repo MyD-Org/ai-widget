@@ -267,13 +267,14 @@ describe('ChatDrawer · scroll lock, viewport y foco', () => {
     expect(document.body.style.overflow).toBe('auto');
   });
 
-  it('sigue a visualViewport (teclado abierto) y sin soporte deja el 100dvh del CSS', () => {
+  it('sigue a visualViewport (teclado abierto) descontando el hueco de arriba; sin soporte rige el CSS', () => {
+    const gap = '(var(--aichat-sheet-gap, 48px) + env(safe-area-inset-top, 0px))';
     const vv = mockVisualViewport(700);
     const { container, unmount } = render(<ChatDrawer config={config} open />);
-    expect(sheet(container).style.height).toBe('700px');
+    expect(sheet(container).style.height).toBe(`calc(700px - ${gap})`);
     act(() => vv.set(380, 60));
-    expect(sheet(container).style.height).toBe('380px');
-    expect(sheet(container).style.top).toBe('60px');
+    expect(sheet(container).style.height).toBe(`calc(380px - ${gap})`);
+    expect(sheet(container).style.top).toBe(`calc(60px + ${gap})`);
     unmount();
     vv.restore();
     const second = render(<ChatDrawer config={config} open />);
@@ -678,5 +679,41 @@ describe('ChatDrawer · teaser', () => {
     expect(container.querySelector('.aichat-root')).toHaveClass('aichat-mobile');
     await userEvent.tab();
     expect(screen.getByRole('button', { name: 'Sí, ayúdeme' })).toHaveFocus();
+  });
+});
+
+describe('ChatDrawer · hoja con la página asomando y sugerencias', () => {
+  it('tocar el fondo atenuado cierra el chat; minimizada no hay fondo', async () => {
+    const onOpenChange = vi.fn();
+    const { container } = render(<ChatDrawer config={config} open onOpenChange={onOpenChange} />);
+    const scrim = container.querySelector('.aichat-scrim') as HTMLElement;
+    expect(scrim).not.toBeNull();
+    await userEvent.click(scrim);
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('la manija es el botón Minimizar y la cabecera no tiene otro', async () => {
+    const { container } = render(<ChatDrawer config={config} open />);
+    const minimizar = screen.getByRole('button', { name: 'Minimizar' });
+    expect(minimizar.className).toContain('aichat-grabber');
+    await userEvent.click(minimizar);
+    expect(container.querySelector('.aichat-scrim')).toBeNull();
+  });
+
+  it('las sugerencias del estado vacío se envían como mensaje', async () => {
+    const sent: string[] = [];
+    vi.spyOn(globalThis, 'fetch' as never).mockImplementation((async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/v1/conversations') && init?.method === 'POST') return new Response(JSON.stringify({ id: 'c1' }), { status: 201 });
+      if (url.endsWith('/messages') && init?.method === 'POST') {
+        sent.push(JSON.parse(String(init.body)).content);
+        return new Response('event: done\ndata: {}\n\n', { status: 200 });
+      }
+      return new Response('[]', { status: 200 });
+    }) as never);
+    render(<ChatDrawer config={config} open suggestions={['Reflectores para exterior']} />);
+    const boton = await screen.findByRole('button', { name: 'Reflectores para exterior' });
+    await waitFor(() => expect(boton).toBeEnabled());
+    await userEvent.click(boton);
+    await waitFor(() => expect(sent).toEqual(['Reflectores para exterior']));
   });
 });
