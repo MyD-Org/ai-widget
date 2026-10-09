@@ -219,7 +219,9 @@
   gap: 0.75rem;
   padding: 0.375rem 1.125rem 1rem;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  /* Sin scroll-behavior: smooth. El autoscroll al fondo corre en cada delta del stream: con
+     smooth cada asignación de scrollTop corta la animación anterior y el log queda cientos de px
+     arriba del final (los mensajes nuevos sólo aparecían al enfocar el input). */
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

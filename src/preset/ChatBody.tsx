@@ -184,7 +184,16 @@ export function ChatBody({
       if (stickToBottom.current) el.scrollTop = el.scrollHeight;
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    // Las fotos de las cards cargan después de dibujarse y agrandan el contenido sin cambiar el
+    // alto del log (el ResizeObserver no se entera): `load` no burbujea, se escucha en captura.
+    const onLoad = () => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    };
+    el.addEventListener('load', onLoad, true);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('load', onLoad, true);
+    };
   }, []);
   useEffect(() => {
     const el = logRef.current;
