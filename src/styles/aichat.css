@@ -625,18 +625,20 @@
   height: calc(100vh - var(--aichat-sheet-gap, 48px) - env(safe-area-inset-top, 0px));
   height: calc(100dvh - var(--aichat-sheet-gap, 48px) - env(safe-area-inset-top, 0px));
   max-height: none;
-  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   border-radius: var(--aichat-radius-sheet, 20px) var(--aichat-radius-sheet, 20px) 0 0;
-  background: var(--aichat-bg);
-  box-shadow: 0 -10px 30px -12px rgba(8, 10, 16, 0.35);
-  overflow: hidden;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
   transform-origin: bottom center;
   animation-name: aichat-sheet-in;
 }
 .aichat-drawer.aichat-sheet:focus { outline: none; }
+/* El fondo, la sombra y la safe-area van en el panel, no en el contenedor: al arrastrar la hoja
+   hacia abajo se mueve el panel, y lo que queda al descubierto tiene que ser la página del host. */
 .aichat-sheet .aichat-panel {
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   border-radius: inherit;
-  box-shadow: none;
+  box-shadow: 0 -10px 30px -12px rgba(8, 10, 16, 0.35);
   transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 /* Fondo atenuado detrás de la hoja expandida; tocarlo cierra el chat. */
@@ -697,9 +699,8 @@
   z-index: var(--aichat-peek-z-index, 9999);
   top: auto;
   height: auto;
-  padding: 0;
   border-radius: 18px 18px 0 0;
-  background: none;
+  overflow: hidden;
   box-shadow: 0 -14px 34px -18px rgba(8, 10, 16, 0.5);
   animation-name: aichat-peek-in;
 }
