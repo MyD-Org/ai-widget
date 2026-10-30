@@ -226,6 +226,12 @@ describe('card spec', () => {
     expect(document.querySelector('img')).toHaveAttribute('src', 'https://img.test/1234.jpg');
   });
 
+  it('priceNote del host va bajo el precio', async () => {
+    const resolveProducts = vi.fn().mockResolvedValue([{ ...product, priceNote: '$ 23.391 con Transferencia' }]);
+    render(<Card card={spec} commerce={{ resolveProducts }} />);
+    expect(await screen.findByText('$ 23.391 con Transferencia')).toHaveClass('aichat-product-pricenote');
+  });
+
   it('sin code usa el sku', async () => {
     const resolveProducts = vi.fn().mockResolvedValue([{ id: '1234', name: 'X', sku: 'SKU-9' }]);
     render(<Card card={spec} commerce={{ resolveProducts }} />);

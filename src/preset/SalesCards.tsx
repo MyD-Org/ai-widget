@@ -29,6 +29,12 @@ function displayPrice(p?: ResolvedProduct): number | undefined {
   return p && typeof p.price === 'number' && Number.isFinite(p.price) && p.price > 0 ? p.price : undefined;
 }
 
+// Línea bajo el precio ("$ X con Transferencia"): texto del host, solo junto a un precio exhibible.
+function priceNote(p: ResolvedProduct | undefined, price: number | undefined): string | undefined {
+  const note = typeof p?.priceNote === 'string' ? p.priceNote.trim() : '';
+  return price != null && note ? note : undefined;
+}
+
 // Resuelve los ids de UNA card con el catálogo del host. Tres garantías:
 // - Una sola llamada por card: el efecto depende del string de ids, no de la identidad del
 //   callback. ChatBody re-renderiza en cada token del streaming y un host que pasa una arrow
@@ -202,6 +208,7 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
     // Shop no puede cargar algo que no vende): se muestra como no disponible.
     const unavailable = p?.available === false || (complete && !p);
     const stock = unavailable ? undefined : stockNote(p?.stock, labels);
+    const note = unavailable ? undefined : priceNote(p, price);
     const nameId = `${uid}-name-${i}`;
     return (
       <article key={i} className="aichat-product" data-clickable={onOpen ? '' : undefined}>
@@ -226,6 +233,7 @@ function ProductsBody({ card, commerce, labels }: { card: ProductsCard; commerce
               {stock && <span className="aichat-stock-low">{stock}</span>}
             </div>
           )}
+          {note && <span className="aichat-product-pricenote">{note}</span>}
           {unavailable && <span className="aichat-tag">{labels.unavailableLabel}</span>}
           <ProductAddControl id={item.id} product={p} unavailable={unavailable} nameId={nameId} commerce={commerce} labels={labels} />
         </div>
@@ -365,6 +373,7 @@ function SpecBody({ card, commerce, labels }: { card: SpecCard; commerce?: Comme
   // Mismo criterio que `products`: sin el producto en una respuesta completa, no se vende.
   const unavailable = p?.available === false || (complete && !p);
   const stock = unavailable ? undefined : stockNote(p?.stock, labels);
+  const note = unavailable ? undefined : priceNote(p, price);
   const code = p?.code || p?.sku;
   const attributes = Array.isArray(p?.attributes)
     ? p.attributes.filter((a): a is string => typeof a === 'string' && a.trim() !== '')
@@ -388,6 +397,7 @@ function SpecBody({ card, commerce, labels }: { card: SpecCard; commerce?: Comme
                 {stock && <span className="aichat-stock-low">{stock}</span>}
               </div>
             )}
+            {note && <span className="aichat-product-pricenote">{note}</span>}
             {unavailable ? (
               <span className="aichat-tag">{labels.unavailableLabel}</span>
             ) : (

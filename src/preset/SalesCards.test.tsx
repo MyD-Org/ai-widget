@@ -47,6 +47,23 @@ describe('card products', () => {
     expect(img).toHaveAttribute('loading', 'lazy');
   });
 
+  it('priceNote del host va bajo el precio; sin precio o no disponible no se muestra', async () => {
+    const resolveProducts = vi.fn().mockResolvedValue([
+      { ...resolved[0], priceNote: '$ 23.391 con Transferencia' },
+      { ...resolved[1], priceNote: '$ 37.350 con Transferencia' },
+    ]);
+    render(<Card card={products} commerce={{ resolveProducts }} />);
+    expect(await screen.findByText('$ 23.391 con Transferencia')).toHaveClass('aichat-product-pricenote');
+    expect(screen.queryByText('$ 37.350 con Transferencia')).toBeNull();
+  });
+
+  it('priceNote sin precio exhibible no se muestra', async () => {
+    const resolveProducts = vi.fn().mockResolvedValue([{ id: '1101', name: 'X', price: 0, available: true, priceNote: 'con Transferencia' }]);
+    render(<Card card={products} commerce={{ resolveProducts }} />);
+    expect(await screen.findByText('X')).toBeInTheDocument();
+    expect(screen.queryByText('con Transferencia')).toBeNull();
+  });
+
   it('llama resolveProducts una sola vez aunque el host pase una arrow nueva en cada render', async () => {
     const spy = vi.fn().mockResolvedValue(resolved);
     const { rerender } = render(<Card card={products} commerce={{ resolveProducts: (ids) => spy(ids) }} />);

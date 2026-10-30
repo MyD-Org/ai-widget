@@ -40,7 +40,7 @@ activity (off by default).
   dock={wide ? 'right' : 'none'} // 'right': panel de alto completo, ancho --aichat-dock-width (400px)
   sendRequest={request}       // { id, text }: cada id nuevo abre el chat y envía text una vez
   commerce={{
-    resolveProducts,          // suma code, attributes y specUrl para la card spec
+    resolveProducts,          // suma code, attributes y specUrl (card spec) y priceNote (línea bajo el precio)
     onNavigateCatalog: (filters, card) => ({ undo }), // card catalog
     shouldAutoNavigate: () => onCatalog && wide,      // navegar sola (solo cards en vivo)
   }}
