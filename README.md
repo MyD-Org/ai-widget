@@ -137,5 +137,10 @@ Override the CSS custom properties after importing the stylesheet:
   --aichat-primary: #c4161c;
   --aichat-radius: 8px;
   --aichat-launcher-bottom: 72px; /* mobile: arriba de una barra fija del host */
+  /* Cards de producto, para que coincidan con las del catálogo del host (por defecto salen del primario): */
+  --aichat-price-note: var(--color-accent);       /* línea priceNote ("$ X con Transferencia") */
+  --aichat-add-bg: var(--color-accent-soft);      /* "Agregar" y contador */
+  --aichat-add-bg-hover: color-mix(in oklab, var(--color-accent) 15%, transparent);
+  --aichat-add-text: var(--color-accent);
 }
 ```
