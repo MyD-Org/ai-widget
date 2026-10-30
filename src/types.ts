@@ -104,6 +104,9 @@ export interface ResolvedProduct {
   imageUrl?: string;
   /** Precio unitario a exhibir, ya en la lista de quien mira. */
   price?: number;
+  /** Línea bajo el precio, ya formateada por el host ("$ 3.200,00 con Transferencia"). Solo se
+   *  muestra junto a un precio y si el producto está disponible. */
+  priceNote?: string;
   available?: boolean;
   /** Unidades en stock, si el host las conoce. Con 1 a 5 la card muestra "Queda 1" / "Quedan N". */
   stock?: number;
